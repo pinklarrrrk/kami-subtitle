@@ -27,7 +27,7 @@
 | [Piper Amy](https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/vits-piper-en_US-amy-low.tar.bz2) | 美式英语 | `vits-piper-en_US-amy-low` |
 | [Piper Lessac](https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/vits-piper-en_US-lessac-medium.tar.bz2) | 美式英语 | `vits-piper-en_US-lessac-medium` |
 
-下载并解压后，在「设置 → 语音包 → 自定义离线语音」点「导入文件夹…」。选中直接包含以下文件的那一层：
+下载后，打开「设置 → 语音包」，把 `.tar.bz2` 拖进窗口，或点击「导入压缩包…」。如果已解压，点击「导入文件夹…」，选中直接包含以下文件的那一层：
 
 - 一个 VITS `.onnx` 模型
 - `tokens.txt`
@@ -47,7 +47,7 @@ AISHELL-3 通过这个入口使用默认发音人。只有 `.onnx` 和 `.onnx.js
 在 Windows x64 安装 Python 3.12。从 [Vosk 模型页](https://alphacephei.com/vosk/models) 下载并解压 `vosk-model-small-cn-0.22`，将环境变量 `KAMI_VOSK_MODEL` 指向解压后的模型目录，然后运行：
 
 ```powershell
-py -3.12 -m pip install pyinstaller==6.22.3 pywin32==311 sherpa-onnx==1.12.40
+py -3.12 -m pip install pyinstaller==6.22.3 pywin32==311 sherpa-onnx==1.12.40 tkinterdnd2==0.7.0
 py -3.12 -m pip install --target src/mic_vendor vosk==0.3.45 sounddevice==0.5.6
 py -3.12 -m PyInstaller --noconfirm Kami.spec
 ```

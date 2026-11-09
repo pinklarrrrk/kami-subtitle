@@ -5,6 +5,7 @@ from pathlib import Path, PurePosixPath
 import shutil
 import subprocess
 import sys
+import tarfile
 import tempfile
 import threading
 import wave
@@ -63,10 +64,43 @@ def register_custom(folder):
     root = Path(folder).resolve()
     if not complete(CUSTOM, root):
         raise ValueError("请选择包含一个 VITS ONNX、tokens.txt，以及 lexicon.txt 或 espeak-ng-data 的文件夹。")
+    if not str(root).isascii() and str(HOME).isascii():
+        HOME.mkdir(parents=True, exist_ok=True)
+        with tempfile.TemporaryDirectory(dir=HOME, prefix="vits-staging-") as staging:
+            copied = Path(staging) / "model"
+            shutil.copytree(root, copied)
+            target = HOME / Path(staging).name.replace("vits-staging-", "vits-import-")
+            copied.rename(target)
+            root = target
     with lock:
         CUSTOM_PATH.parent.mkdir(parents=True, exist_ok=True)
         CUSTOM_PATH.write_text(str(root), encoding="utf-8")
         engines.pop(CUSTOM, None)
+
+
+def import_custom_archive(path):
+    HOME.mkdir(parents=True, exist_ok=True)
+    with tempfile.TemporaryDirectory(dir=HOME, prefix="vits-staging-") as staging:
+        root = Path(staging)
+        with tarfile.open(path, "r:bz2") as archive:
+            def safe_file(member, destination):
+                if not (member.isdir() or member.isfile()):
+                    raise ValueError("语音包只能包含普通文件和文件夹。")
+                return tarfile.data_filter(member, destination)
+
+            archive.extractall(root, filter=safe_file)
+        candidates = {model.parent for model in root.rglob("*.onnx") if complete(CUSTOM, model.parent)}
+        if len(candidates) != 1:
+            raise ValueError("压缩包里需要有且只有一个兼容的 VITS 模型文件夹。")
+        target = HOME / root.name.replace("vits-staging-", "vits-import-")
+        selected = candidates.pop()
+        if selected == root:
+            target.mkdir()
+            for entry in root.iterdir():
+                entry.rename(target / entry.name)
+        else:
+            selected.rename(target)
+        register_custom(target)
 
 
 def remove_custom():

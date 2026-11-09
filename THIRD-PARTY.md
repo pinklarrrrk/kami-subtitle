@@ -10,4 +10,6 @@
 - 本机版的 Piper 华燕和 Matcha Baker / Vocos 来自 sherpa-onnx 的模型发布资源。华燕随附模型卡注明训练数据许可未知；这些本机试听与使用资源未发布为公开发行版。
 - 打字朗读对接 [MamboTTS](https://github.com/Tsukimisaka/MamboTTS)（Tsukimisaka）与 [GPT-SoVITS](https://github.com/RVC-Boss/GPT-SoVITS) 的本机 API。公开包不分发 GPT-SoVITS 整合包、曼波权重或参考音频；另行取得的组件遵循各自许可。
 
+- TkinterDnD2 和 tkDnD 提供 Windows 文件拖放，许可见随包附带的第三方许可。
+
 打包目录的 `_internal/licenses` 保留所收集的第三方许可证；字体许可在 `_internal/fonts`。

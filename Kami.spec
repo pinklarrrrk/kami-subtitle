@@ -16,7 +16,7 @@ if not (model / "am" / "final.mdl").is_file():
 datas = [(str(src / name), ".") for name in ("obs.html", "reader.html")]
 datas += [(str(src / "fonts"), "fonts"), (str(root / "assets" / "kami.ico"), "assets"),
           (str(model), model_name)]
-datas += collect_data_files("_sounddevice_data")
+datas += collect_data_files("_sounddevice_data") + collect_data_files("tkinterdnd2")
 for info in vendor.glob("*.dist-info"):
     for entry in info.rglob("*"):
         if entry.is_file() and ("license" in entry.name.lower() or "licenses" in entry.parts):

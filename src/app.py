@@ -16,6 +16,8 @@ import sys
 import tempfile
 import threading
 import tkinter as tk
+from tkinterdnd2 import DND_FILES, TkinterDnD
+import tarfile
 from tkinter import ttk, messagebox, filedialog, simpledialog, colorchooser
 import urllib.request
 from urllib.parse import quote
@@ -483,7 +485,7 @@ class Reader:
         self.copy_hint_timer = None
 
     def show_about(self):
-        version = "v1.0.1"
+        version = "v1.0.2"
         dialog = tk.Toplevel(self.settings_parent())
         dialog.title("关于咔咪字幕机")
         dialog.transient(self.settings_parent())
@@ -1022,22 +1024,45 @@ class Reader:
                 self.save_voice()
                 self.status.set(f"已切回{self.voice.get()}")
 
-        def custom_pack(remove=False):
+        def custom_pack(remove=False, archive=None):
             try:
                 if remove:
                     voice_packs.remove_custom()
                 else:
-                    folder = filedialog.askdirectory(parent=dialog, title="选择解压后的 sherpa-onnx VITS 语音包")
-                    if not folder:
-                        return
-                    voice_packs.register_custom(folder)
+                    if archive is None:
+                        folder = filedialog.askdirectory(parent=dialog, title="选择解压后的 sherpa-onnx VITS 语音包")
+                        if not folder:
+                            return
+                        voice_packs.register_custom(folder)
+                    else:
+                        if not archive.lower().endswith(".tar.bz2"):
+                            raise ValueError("请选择一个 .tar.bz2 语音包。")
+                        progress.set("正在解压语音包…")
+                        dialog.update_idletasks()
+                        voice_packs.import_custom_archive(archive)
                     self.voice.set(voice_packs.CUSTOM)
                     self.save_voice()
                 refresh()
                 custom_remove.state(["!disabled"] if voice_packs.CUSTOM_PATH.exists() else ["disabled"])
                 progress.set("已移除自定义语音包" if remove else "已导入自定义语音包")
-            except (OSError, ValueError) as exc:
+            except (OSError, ValueError, tarfile.TarError) as exc:
+                progress.set("")
                 messagebox.showerror("自定义语音包", str(exc), parent=dialog)
+
+        def choose_archive():
+            path = filedialog.askopenfilename(parent=dialog, filetypes=[("语音包", "*.tar.bz2")])
+            if path:
+                custom_pack(archive=path)
+
+        def drop_archive(event):
+            paths = dialog.tk.splitlist(event.data)
+            if len(paths) == 1:
+                custom_pack(archive=paths[0])
+            else:
+                messagebox.showerror("自定义语音包", "请一次拖入一个 .tar.bz2 语音包。", parent=dialog)
+
+        dialog.drop_target_register(DND_FILES)
+        dialog.dnd_bind("<<Drop>>", drop_archive)
 
         ttk.Label(panel, text="自定义离线语音").grid(row=0, column=0, sticky="w")
         ttk.Button(panel, text="导入文件夹…", command=custom_pack).grid(row=0, column=1, pady=3)
@@ -1045,7 +1070,9 @@ class Reader:
         custom_remove.grid(row=0, column=2, pady=3)
         if not voice_packs.CUSTOM_PATH.exists():
             custom_remove.state(["disabled"])
-        ttk.Label(panel, textvariable=progress).grid(row=1, column=0, columnspan=3, sticky="w")
+        ttk.Button(panel, text="导入压缩包…", command=choose_archive).grid(row=1, column=1, pady=3)
+        ttk.Label(panel, text="可将 .tar.bz2 拖到此窗口").grid(row=1, column=0, sticky="w")
+        ttk.Label(panel, textvariable=progress).grid(row=2, column=0, columnspan=3, sticky="w")
         refresh()
 
     def close(self, restart=False):
@@ -1061,7 +1088,7 @@ if __name__ == "__main__":
     from web import Handler, ThreadingHTTPServer
 
     ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID("MiMoReader.Desktop")
-    root = tk.Tk()
+    root = TkinterDnD.Tk()
     server = None
     restart = False
     try:
