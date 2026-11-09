@@ -16,15 +16,22 @@
 
 ### 导入自定义离线语音包
 
-想用普通话音色，可以[下载 Piper 华燕（sherpa-onnx 版）](https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/vits-piper-zh_CN-huayan-medium.tar.bz2)。解压后，选择里面的 `vits-piper-zh_CN-huayan-medium` 文件夹。
+下面是 sherpa-onnx 提供的离线语音包，按需要选一个下载：
 
-下载并解压兼容的语音包，然后在「设置 → 语音包 → 自定义离线语音」点击「导入文件夹…」。选中直接包含以下文件的那一层：
+| 下载 | 语言 | 解压后选择的文件夹 |
+| --- | --- | --- |
+| [Piper 华燕](https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/vits-piper-zh_CN-huayan-medium.tar.bz2) | 普通话 | `vits-piper-zh_CN-huayan-medium` |
+| [AISHELL-3](https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/vits-icefall-zh-aishell3.tar.bz2) | 普通话 | `vits-icefall-zh-aishell3` |
+| [Piper Amy](https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/vits-piper-en_US-amy-low.tar.bz2) | 美式英语 | `vits-piper-en_US-amy-low` |
+| [Piper Lessac](https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/vits-piper-en_US-lessac-medium.tar.bz2) | 美式英语 | `vits-piper-en_US-lessac-medium` |
+
+下载并解压后，在「设置 → 语音包 → 自定义离线语音」点「导入文件夹…」。选中直接包含以下文件的那一层：
 
 - 一个 VITS `.onnx` 模型
 - `tokens.txt`
 - `lexicon.txt` 或完整的 `espeak-ng-data/` 文件夹
 
-只有 `.onnx` 和 `.onnx.json` 的 Piper 包不能直接导入。导入后软件会自动选中这个音色。重新导入可替换，点「移除」不会删除模型文件。
+AISHELL-3 通过这个入口使用默认发音人。只有 `.onnx` 和 `.onnx.json` 的 Piper 包，以及使用不同模型结构的 Matcha Baker，不能从这个入口导入。导入后软件会自动选中这个音色。重新导入可替换，点「移除」不会删除模型文件。
 
 ## 接入 OBS 和 VTube Studio
 
