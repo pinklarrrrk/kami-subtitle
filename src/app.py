@@ -263,6 +263,7 @@ class Reader:
         root.title("咔咪字幕机")
         assets = Path(getattr(sys, "_MEIPASS", Path(__file__).resolve().parents[1])) / "assets"
         icon = str(assets / "kami.ico")
+        self.window_icon = icon
         root.iconbitmap(icon)
         root.geometry(f"380x285+{max(0, root.winfo_screenwidth() - 420)}+80")
         root.minsize(360, 255)
@@ -484,9 +485,14 @@ class Reader:
         self.copy_hint.place_forget()
         self.copy_hint_timer = None
 
+    def new_dialog(self, parent):
+        dialog = tk.Toplevel(parent)
+        dialog.iconbitmap(self.window_icon)
+        return dialog
+
     def show_about(self):
-        version = "v1.0.4"
-        dialog = tk.Toplevel(self.settings_parent())
+        version = "v1.0.5"
+        dialog = self.new_dialog(self.settings_parent())
         dialog.title("关于咔咪字幕机")
         dialog.transient(self.settings_parent())
         panel = ttk.Frame(dialog, padding=16)
@@ -512,7 +518,7 @@ class Reader:
         import web
 
         styles = subtitle_style()
-        dialog = tk.Toplevel(self.settings_parent())
+        dialog = self.new_dialog(self.settings_parent())
         dialog.title("字幕样式")
         dialog.transient(self.settings_parent())
         dialog.resizable(False, False)
@@ -722,7 +728,7 @@ class Reader:
         if self.busy:
             self.status.set("请先停止朗读，再试听")
             return
-        dialog = tk.Toplevel(self.settings_parent())
+        dialog = self.new_dialog(self.settings_parent())
         dialog.title("AISHELL-3 音色")
         dialog.transient(self.settings_parent())
         dialog.grab_set()
@@ -970,7 +976,7 @@ class Reader:
 
     def configure_mimo(self):
         parent = self.settings_parent()
-        dialog = tk.Toplevel(parent)
+        dialog = self.new_dialog(parent)
         dialog.title("MiMo 设置")
         dialog.transient(parent)
         dialog.resizable(False, False)
@@ -1008,7 +1014,7 @@ class Reader:
         if self.busy:
             self.status.set("请先停止朗读，再管理语音包")
             return
-        dialog = tk.Toplevel(self.settings_parent())
+        dialog = self.new_dialog(self.settings_parent())
         dialog.title("语音包")
         dialog.transient(self.settings_parent())
         dialog.grab_set()
