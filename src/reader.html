@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="zh-CN">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>咔咪字幕机</title>
+<style>
+:root{color-scheme:light;font:15px/1.5 "Microsoft YaHei UI",system-ui,sans-serif;background:#f4f6fa;color:#17243b}
+*{box-sizing:border-box}
+body{margin:0;padding:clamp(12px,5vw,40px)}
+main{max-width:600px;margin:auto;display:grid;gap:14px;padding:clamp(12px,4vw,24px);border-radius:16px;background:#fff;border:1px solid #dce4ed}
+header,footer{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}
+h1{font-size:20px;margin:0}
+textarea,button{font:inherit;border-radius:8px;border:1px solid #d6deea;padding:8px 10px;color:inherit;background:#f4f6fa}
+textarea{width:100%;background:#fff}
+:focus-visible{outline:2px solid #176f64;outline-offset:2px}
+textarea{min-height:135px;resize:vertical}
+button{cursor:pointer}
+#read{background:#176f64;color:#fff;border-color:transparent;font-weight:700}
+#status{font-size:13px;color:#4c6079;margin:0;min-height:1.5em}
+</style>
+<main>
+  <header><h1>咔咪字幕机</h1><button id="obs">复制 OBS 字幕地址</button></header>
+  <textarea id="text" placeholder="输入或粘贴要朗读的文字…" aria-label="要朗读的文字"></textarea>
+  <footer><div><button id="read">朗读</button> <button id="stop">停止</button></div><p id="status" role="status">Ctrl + Enter 朗读</p></footer>
+</main>
+<script>
+const $ = id => document.getElementById(id);
+const status = message => $('status').textContent = message;
+let active, player;
+const post = (path, body, signal) => fetch(path, {
+  method: 'POST', headers: {'Content-Type': 'application/json'},
+  body: JSON.stringify(body), signal, keepalive: path === '/caption'
+});
+function clearAudio() {
+  if (!player) return;
+  const {audio, url} = player;
+  player = undefined;
+  audio.pause();
+  URL.revokeObjectURL(url);
+}
+function stop() {
+  if (active) active.abort();
+  active = undefined;
+  clearAudio();
+  return post('/caption', {text:'', seconds:0}).catch(() => {});
+}
+function chunks(text) {
+  text = text.trim();
+  if (text.includes("\n") && Array.from(text).length <= 256) return [text];
+  return text.split(/(?<=[。！？!?；;])|\n+/u).flatMap(line => {
+    const pieces = [];
+    let rest = line.trim();
+    while (rest.length > 48) {
+      const split = Math.max(...Array.from('，、, ', mark => rest.lastIndexOf(mark, 47)));
+      const end = split >= 12 ? split + 1 : 48;
+      pieces.push(rest.slice(0, end));
+      rest = rest.slice(end).trimStart();
+    }
+    if (rest) pieces.push(rest);
+    return pieces;
+  });
+}
+async function read() {
+  const lines = chunks($('text').value);
+  if (!lines.length) return status('请输入要朗读的文字');
+  const clearing = stop();
+  const run = active = new AbortController();
+  try {
+    await clearing;
+    const prepare = async text => {
+      try {
+        const r = await post('/speech', {text}, run.signal);
+        if (!r.ok) throw new Error(await r.text());
+        return {blob: await r.blob()};
+      } catch (error) {
+        return {error};
+      }
+    };
+    let pending = prepare(lines[0]);
+    for (const [index, text] of lines.entries()) {
+      if (run.signal.aborted) return;
+      status('正在生成语音…');
+      const {blob, error} = await pending;
+      if (error) throw error;
+      if (run.signal.aborted) return;
+      const url = URL.createObjectURL(blob);
+      const audio = new Audio(url);
+      player = {audio, url};
+      await new Promise((resolve, reject) => {
+        let settled = false;
+        const done = error => {
+          if (settled) return;
+          settled = true;
+          audio.onended = audio.onerror = null;
+          run.signal.removeEventListener('abort', abort);
+          error ? reject(error) : resolve();
+        };
+        const abort = () => done(new Error('停止'));
+        run.signal.addEventListener('abort', abort, {once:true});
+        audio.onended = () => done();
+        audio.onerror = () => done(new Error('无法播放语音'));
+        audio.play().then(() => {
+          if (settled || run.signal.aborted) return;
+          status('正在朗读…');
+          if (index + 1 < lines.length) pending = prepare(lines[index + 1]);
+          const hold = Math.min(6, Math.max(1.8, Array.from(text).length * 0.15));
+          post('/caption', {text, seconds:audio.duration + hold}).catch(() => {});
+        }).catch(error => done(new Error(
+          error.name === 'NotAllowedError'
+            ? '浏览器阻止了声音播放，请允许此网站播放声音后重试'
+            : '语音未能开始播放，请重试'
+        )));
+      });
+      if (run.signal.aborted) return;
+      clearAudio();
+    }
+    if (active === run) {
+      active = undefined;
+      status('朗读完成');
+    }
+  } catch (error) {
+    if (active === run) status(error.message || '朗读失败');
+  } finally {
+    if (active === run) await stop();
+  }
+}
+$('read').onclick = read;
+$('stop').onclick = () => { stop(); status('已停止'); };
+$('obs').onclick = async () => {
+  const address = location.origin + '/obs';
+  try { await navigator.clipboard.writeText(address); status('已复制字幕地址'); }
+  catch { window.prompt('OBS 浏览器源地址', address); }
+};
+document.addEventListener('keydown', e => {
+  if (e.ctrlKey && e.key === 'Enter') { e.preventDefault(); read(); }
+  if (e.key === 'Escape') $('stop').click();
+});
+window.addEventListener('pagehide', () => { if (active) stop(); });
+</script>

@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="zh-CN">
+<meta charset="utf-8">
+<title>咔咪字幕机 · OBS 字幕</title>
+<style>
+@font-face{
+  font-family:"MiMo Source Han Sans";
+  src:url("/fonts/SourceHanSansCN-Bold.otf") format("opentype");
+  font-weight:700;
+}
+body{margin:0;position:fixed;inset:0;display:flex;align-items:flex-end;justify-content:center;background:transparent}
+body.preview{background:repeating-conic-gradient(#ebedf0 0% 25%,#cbd0d7 0% 50%) 0 0/32px 32px}
+#caption{
+  position:relative;
+  box-sizing:border-box;
+  width:max-content;
+  max-width:96%;
+  margin:0 0 calc(4vh + .5em);
+  padding:.32em .65em;
+  border-radius:.65em;
+  background:var(--caption-background,#fffaf0);
+  box-shadow:var(--caption-shadow,0 3px 12px rgba(22,15,25,.24));
+  font:700 var(--caption-size,clamp(20px,2.75vw,54px))/1.4 "MiMo Source Han Sans","Source Han Sans SC","Microsoft YaHei UI",sans-serif;
+  text-align:center;
+  color:var(--caption-color,#181818);
+  overflow-wrap:anywhere;
+  white-space:pre-wrap;
+}
+#caption[data-empty="true"]{display:none}
+#caption span{position:relative}
+#caption[data-font="custom"]{font-family:"Kami Custom","MiMo Source Han Sans",sans-serif}
+#caption[data-font="source-han-serif"]{
+  font-family:"Source Han Serif SC Heavy","Source Han Serif SC","思源宋体 SC",SimSun,serif;
+}
+#caption[data-font="yahei"]{font-family:"Microsoft YaHei UI","Microsoft YaHei",sans-serif}
+#caption::after{
+  content:"";
+  position:absolute;
+  left:50%;
+  top:calc(100% - 1px);
+  transform:translateX(-50%);
+  width:1.05em;
+  height:.52em;
+  background:var(--caption-background,#fffaf0);
+  clip-path:polygon(0 0,100% 0,50% 100%);
+}
+#caption[data-mode="plain"]{
+  width:auto;
+  max-width:92%;
+  border-radius:0;
+  box-shadow:none;
+}
+#caption[data-mode="plain"]::before{
+  content:attr(data-text);
+  position:absolute;
+  inset:0;
+  padding:inherit;
+  color:transparent;
+  -webkit-text-stroke:var(--caption-outline,4px) var(--caption-outline-color,#000);
+}
+#caption[data-mode="plain"]::after{display:none}
+</style>
+<style id="custom-font"></style>
+<div id="caption" data-empty="true"><span></span></div>
+<script>
+const caption = document.querySelector('#caption');
+const face = document.querySelector('#custom-font');
+const preview = location.pathname === '/preview';
+if (preview) document.body.classList.add('preview');
+let line = preview ? '诶，等一下，我刚刚是不是点错了？这是一句字幕预览。' : '';
+let wrap = 0;
+let currentFont;
+function renderText() {
+  const text = wrap ? line.split('\n').map(part => {
+    const chars = Array.from(part);
+    const lines = [];
+    for (let i = 0; i < chars.length; i += wrap) lines.push(chars.slice(i, i + wrap).join(''));
+    return lines.join('\n');
+  }).join('\n') : line;
+  caption.firstElementChild.textContent = text;
+  caption.dataset.text = text;
+  caption.dataset.empty = String(!text);
+}
+async function refresh() {
+  try {
+    const r = await fetch('/caption', {signal: AbortSignal.timeout(2000)});
+    line = r.ok ? await r.text() : '';
+  } catch { line = ''; }
+  renderText();
+  setTimeout(refresh, 120);
+}
+if (!preview) refresh();
+async function refreshStyle() {
+  try {
+    const r = await fetch(preview ? '/preview-style' : '/subtitle-style', {signal: AbortSignal.timeout(2000)});
+    if (r.ok) {
+      const style = await r.json();
+      caption.dataset.font = style.font;
+      if (style.font_url !== currentFont) {
+        currentFont = style.font_url;
+        face.textContent = currentFont ? '@font-face{font-family:"Kami Custom";src:url(' + JSON.stringify(currentFont) + ')}' : '';
+      }
+      caption.dataset.mode = style.mode;
+      caption.style.setProperty('--caption-color', style.color);
+      caption.style.setProperty('--caption-background', style.background || 'transparent');
+      caption.style.setProperty('--caption-size', style.size ? style.size + 'px' : '');
+      caption.style.setProperty('--caption-shadow', !style.background || !style.opacity ? 'none' : '');
+      caption.style.setProperty('--caption-outline', 2 * (style.outline || 0) + 'px');
+      caption.style.setProperty('--caption-outline-color', style.outline_color || '#000');
+      wrap = Number(style.wrap) || 0;
+      renderText();
+    }
+  } catch {}
+  setTimeout(refreshStyle, preview ? 150 : 700);
+}
+refreshStyle();
+</script>
