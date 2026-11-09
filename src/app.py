@@ -17,7 +17,6 @@ import tempfile
 import threading
 import tkinter as tk
 from tkinter import ttk, messagebox, filedialog, simpledialog, colorchooser
-from zipfile import BadZipFile
 import urllib.request
 from urllib.parse import quote
 import webbrowser
@@ -484,7 +483,7 @@ class Reader:
         self.copy_hint_timer = None
 
     def show_about(self):
-        version = "v1.0.0"
+        version = "v1.0.1"
         dialog = tk.Toplevel(self.settings_parent())
         dialog.title("关于咔咪字幕机")
         dialog.transient(self.settings_parent())
@@ -1013,7 +1012,7 @@ class Reader:
         dialog.grab_set()
         panel = ttk.Frame(dialog, padding=14)
         panel.pack(fill="both", expand=True)
-        buttons = {}
+        progress = tk.StringVar(dialog)
 
         def refresh():
             options = self.voice_options()
@@ -1022,84 +1021,8 @@ class Reader:
                 self.voice.set(speech.default_voice())
                 self.save_voice()
                 self.status.set(f"已切回{self.voice.get()}")
-            for name, (add, remove) in buttons.items():
-                exists = mambo.locate() if name == "曼波" else voice_packs.installed(name)
-                removable = (mambo.LOCATION if name == "曼波" else voice_packs.root_for(name)).exists()
-                can_install = (voice_packs.mambo_package() is not None if name == "曼波" else
-                               (voice_packs.bundled_root() / "voice-packs" / voice_packs.ARCHIVES[name]).is_file())
-                add.state(["disabled"] if exists or not can_install else ["!disabled"])
-                remove.state(["!disabled"] if removable else ["disabled"])
 
-        destination = tk.StringVar(dialog)
-        result = queue.Queue()
-        working = False
-        progress = tk.StringVar(dialog)
-
-        def choose_location():
-            path = filedialog.askdirectory(parent=dialog, title="选择语音包保存位置")
-            if path:
-                destination.set(path)
-
-        def install(name):
-            nonlocal working
-            working = True
-            progress.set(f"正在安装 {name}…")
-            location = destination.get()
-            for pair in buttons.values():
-                for button in pair:
-                    button.state(["disabled"])
-            def run():
-                try:
-                    voice_packs.install_available(name, location)
-                except (OSError, ValueError, BadZipFile) as exc:
-                    result.put(str(exc))
-                else:
-                    result.put(None)
-            def poll():
-                nonlocal working
-                try:
-                    error = result.get_nowait()
-                except queue.Empty:
-                    dialog.after(100, poll)
-                    return
-                working = False
-                progress.set("" if error else f"{name} 已安装")
-                refresh()
-                if error:
-                    messagebox.showerror("安装失败", error, parent=dialog)
-            threading.Thread(target=run, daemon=True).start()
-            dialog.after(100, poll)
-
-        def uninstall(name):
-            try:
-                if name == "曼波":
-                    voice_packs.uninstall_mambo()
-                else:
-                    voice_packs.uninstall(name)
-            except (OSError, ValueError) as exc:
-                messagebox.showerror("卸载失败", str(exc), parent=dialog)
-            refresh()
-
-        mambo_package = voice_packs.mambo_package()
-        mambo_size = (sum((mambo_package / file).stat().st_size for file in voice_packs.MAMBO_FILES) / 1e9
-                      if mambo_package else 0)
-        package_labels = {
-            speech.AISHELL: ("AISHELL-3 · 约 28 MB" if (voice_packs.bundled_root() / "voice-packs" / voice_packs.ARCHIVES[speech.AISHELL]).is_file() else "AISHELL-3 · 未找到语音包"),
-            voice_packs.MATCHA: f"Matcha Baker · 约 {(voice_packs.bundled_root() / 'voice-packs' / voice_packs.ARCHIVES[voice_packs.MATCHA]).stat().st_size / 1e6:.0f} MB"
-                               if (voice_packs.bundled_root() / 'voice-packs' / voice_packs.ARCHIVES[voice_packs.MATCHA]).is_file() else "Matcha Baker · 未找到语音包",
-            "曼波": (f"曼波 · 独立包约 {mambo_size:.1f} GB" if mambo_package else "曼波 · 未找到独立包")
-                    + "\n首次朗读需加载模型，可能要等几十秒",
-        }
-        for row, name in enumerate((*voice_packs.MODELS, "曼波")):
-            ttk.Label(panel, text=package_labels[name]).grid(row=row, column=0, sticky="w", padx=(0, 12))
-            add = ttk.Button(panel, text="安装", command=lambda name=name: install(name))
-            remove = ttk.Button(panel, text="卸载", command=lambda name=name: uninstall(name))
-            add.grid(row=row, column=1, padx=4, pady=3)
-            remove.grid(row=row, column=2, pady=3)
-            buttons[name] = (add, remove)
         def custom_pack(remove=False):
-            if working:
-                return
             try:
                 if remove:
                     voice_packs.remove_custom()
@@ -1116,18 +1039,13 @@ class Reader:
             except (OSError, ValueError) as exc:
                 messagebox.showerror("自定义语音包", str(exc), parent=dialog)
 
-        ttk.Label(panel, text="自定义离线语音").grid(row=row + 1, column=0, sticky="w")
-        ttk.Button(panel, text="导入文件夹…", command=custom_pack).grid(row=row + 1, column=1, pady=3)
+        ttk.Label(panel, text="自定义离线语音").grid(row=0, column=0, sticky="w")
+        ttk.Button(panel, text="导入文件夹…", command=custom_pack).grid(row=0, column=1, pady=3)
         custom_remove = ttk.Button(panel, text="移除", command=lambda: custom_pack(True))
-        custom_remove.grid(row=row + 1, column=2, pady=3)
+        custom_remove.grid(row=0, column=2, pady=3)
         if not voice_packs.CUSTOM_PATH.exists():
             custom_remove.state(["disabled"])
-        location_row = row + 2
-        ttk.Label(panel, text="保存位置").grid(row=location_row, column=0, sticky="w")
-        ttk.Entry(panel, textvariable=destination, width=32).grid(row=location_row, column=1, padx=4, pady=6)
-        ttk.Button(panel, text="浏览…", command=choose_location).grid(row=location_row, column=2)
-        ttk.Label(panel, textvariable=progress).grid(row=location_row + 1, column=0, columnspan=3, sticky="w")
-        dialog.protocol("WM_DELETE_WINDOW", lambda: None if working else dialog.destroy())
+        ttk.Label(panel, textvariable=progress).grid(row=1, column=0, columnspan=3, sticky="w")
         refresh()
 
     def close(self, restart=False):
