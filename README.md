@@ -16,6 +16,8 @@
 
 ### 导入自定义离线语音包
 
+想用普通话音色，可以[下载 Piper 华燕（sherpa-onnx 版）](https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/vits-piper-zh_CN-huayan-medium.tar.bz2)。解压后，选择里面的 `vits-piper-zh_CN-huayan-medium` 文件夹。
+
 下载并解压兼容的语音包，然后在「设置 → 语音包 → 自定义离线语音」点击「导入文件夹…」。选中直接包含以下文件的那一层：
 
 - 一个 VITS `.onnx` 模型
