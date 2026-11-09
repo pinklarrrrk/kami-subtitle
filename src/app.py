@@ -485,7 +485,7 @@ class Reader:
         self.copy_hint_timer = None
 
     def show_about(self):
-        version = "v1.0.3"
+        version = "v1.0.4"
         dialog = tk.Toplevel(self.settings_parent())
         dialog.title("关于咔咪字幕机")
         dialog.transient(self.settings_parent())
@@ -494,7 +494,7 @@ class Reader:
         ttk.Label(panel, text=f"咔咪字幕机 {version}").pack(anchor="w")
         ttk.Label(panel, justify="left", wraplength=390, text=(
             "本软件采用 Vibe Coding 方式开发，由用户提出需求并迭代，AI 协助编写代码。\n\n"
-            "开源致谢：Vosk（语音识别）、python-sounddevice（音频采集）、"
+            "开源致谢：Zipformer（中英语音识别）、python-sounddevice（音频采集）、"
             "思源黑体（字幕字体）、Python 与 Tcl/Tk（桌面界面）。感谢 sherpa-onnx、Piper 华燕、Matcha Baker / Vocos，以及 MamboTTS 与 GPT-SoVITS 提供本地语音合成。\n\n"
             "原创代码采用 MIT；原创说明文字和标志采用 CC BY 4.0。第三方组件遵循各自的许可。\n\n"
             "反馈邮箱：pinklark@qq.com\n可复制下方模板，填写后发邮件。"

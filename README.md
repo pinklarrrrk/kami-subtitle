@@ -1,12 +1,12 @@
 # 咔咪字幕机
 
-免费的 Windows 朗读与字幕工具。可以打字朗读，也可以把麦克风里的普通话实时转成 OBS 字幕。
+免费的 Windows 朗读与字幕工具。可以打字朗读，也可以把麦克风里的中英混合语音实时转成 OBS 字幕。
 
 ## 下载和使用
 
 1. 在 [GitHub Releases](https://github.com/pinklarrrrk/kami-subtitle/releases/latest) 下载 Windows x64 ZIP。
 2. 解压整个 ZIP，双击「咔咪字幕机.exe」。
-3. 输入文字后按回车朗读，按 Shift+回车换行，按 Esc 停止。想用麦克风时，点「开麦字幕」。
+3. 输入文字后按回车朗读，按 Shift+回车换行，按 Esc 停止。想用麦克风时，点「开麦字幕」。支持中英混说，字幕会在停顿时分句。
 
 ## 朗读音色
 
@@ -44,11 +44,11 @@ AISHELL-3 通过这个入口使用默认发音人。只有 `.onnx` 和 `.onnx.js
 
 ## 从源码构建
 
-在 Windows x64 安装 Python 3.12。从 [Vosk 模型页](https://alphacephei.com/vosk/models) 下载并解压 `vosk-model-small-cn-0.22`，将环境变量 `KAMI_VOSK_MODEL` 指向解压后的模型目录，然后运行：
+在 Windows x64 安装 Python 3.12。下载并解压 [Zipformer 中英识别模型](https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/sherpa-onnx-streaming-zipformer-bilingual-zh-en-2023-02-20-mobile.tar.bz2)，将环境变量 `KAMI_ASR_MODEL` 指向解压后的模型目录，然后运行：
 
 ```powershell
 py -3.12 -m pip install pyinstaller==6.22.3 pywin32==311 sherpa-onnx==1.12.40 tkinterdnd2==0.7.0
-py -3.12 -m pip install --target src/mic_vendor vosk==0.3.45 sounddevice==0.5.6
+py -3.12 -m pip install --target src/mic_vendor sounddevice==0.5.6
 py -3.12 -m PyInstaller --noconfirm Kami.spec
 ```
 

@@ -1,6 +1,6 @@
 # 第三方组件
 
-- [Vosk API](https://github.com/alphacep/vosk-api) 及 [vosk-model-small-cn-0.22](https://alphacephei.com/vosk/models) 由 Alpha Cephei 及贡献者维护，使用 Apache License 2.0。应用按原样打包模型。
+- 麦克风字幕使用 [sherpa-onnx Zipformer 中英模型](https://huggingface.co/csukuangfj/sherpa-onnx-streaming-zipformer-bilingual-zh-en-2023-02-20)，模型卡标注 Apache License 2.0。
 - [python-sounddevice](https://github.com/spatialaudio/python-sounddevice) 使用 MIT License，底层音频库 [PortAudio](https://www.portaudio.com/license.html) 使用其 MIT 风格许可。
 - [思源黑体](https://github.com/adobe-fonts/source-han-sans) 由 Adobe 和 Google 等贡献，使用 SIL Open Font License 1.1，许可全文随字体分发。
 - [CPython](https://www.python.org/download/releases/3.12.0/license/) 使用 Python Software Foundation License；[Tcl/Tk](https://www.tcl-lang.org/software/tcltk/license.html) 使用各自附带的许可。
