@@ -5,7 +5,7 @@
 ## 下载和使用
 
 1. 在 [GitHub Releases](https://github.com/pinklarrrrk/kami-subtitle/releases/latest) 下载 Windows x64 ZIP。
-2. 解压整个 ZIP，双击「咔咪字幕机.exe」。保留旁边的 `_internal` 文件夹，无需安装 Python。
+2. 解压整个 ZIP，双击「咔咪字幕机.exe」。
 3. 输入文字后按回车朗读，按 Shift+回车换行，按 Esc 停止。想用麦克风时，点「开麦字幕」。
 
 ## 朗读音色
