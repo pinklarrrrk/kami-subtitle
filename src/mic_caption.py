@@ -76,9 +76,12 @@ def recognize(stop, results):
                 pcm, _ = mic.read(rate // 10)
                 samples = [sample / 32768.0 for sample in array("h", bytes(pcm))]
                 line, endpoint = decode_chunk(recognizer, stream, rate, samples)
+                if endpoint and not line:
+                    line = last
                 if line and (line != last or endpoint):
                     results.put((stop, "text", line))
-                last = line
+                if line:
+                    last = line
                 if endpoint:
                     recognizer.reset(stream)
                     last = ""
