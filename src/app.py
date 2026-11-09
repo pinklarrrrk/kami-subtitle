@@ -346,6 +346,7 @@ class Reader:
         voice_actions.pack(fill="x", pady=(6, 0))
         ttk.Button(voice_actions, text="语音包…", style="Card.Soft.TButton", command=self.manage_packs).pack(side="left")
         ttk.Button(voice_actions, text="MiMo 设置…", style="Card.Soft.TButton", command=self.configure_mimo).pack(side="left", padx=(6, 0))
+        ttk.Button(voice_actions, text="识别热词…", style="Card.Soft.TButton", command=self.edit_hotwords).pack(side="left", padx=(6, 0))
         output_card = card("字幕与输出")
         ttk.Button(output_card, text="字幕样式…", style="Card.Soft.TButton", command=self.edit_subtitle_style).pack(side="left")
         ttk.Checkbutton(output_card, text="送到 VTS", variable=self.vts, style="Card.TCheckbutton").pack(side="left", padx=(12, 0))
@@ -491,7 +492,7 @@ class Reader:
         return dialog
 
     def show_about(self):
-        version = "v1.0.5"
+        version = "v1.0.6"
         dialog = self.new_dialog(self.settings_parent())
         dialog.title("关于咔咪字幕机")
         dialog.transient(self.settings_parent())
@@ -973,6 +974,35 @@ class Reader:
         self.stop_audio()
         self.write_caption("")
         self.status.set("已停止")
+
+    def edit_hotwords(self):
+        dialog = self.new_dialog(self.settings_parent())
+        dialog.title("识别热词")
+        dialog.transient(self.settings_parent())
+        panel = ttk.Frame(dialog, padding=14)
+        panel.pack(fill="both", expand=True)
+        ttk.Label(panel, text="每行一个词或短语。下次开麦时生效。").pack(anchor="w")
+        editor = tk.Text(panel, width=48, height=13, undo=True, wrap="word")
+        editor.pack(fill="both", expand=True, pady=8)
+        editor.insert("1.0", mic_caption.hotword_text())
+        actions = ttk.Frame(panel)
+        actions.pack(fill="x")
+
+        def restore():
+            editor.delete("1.0", "end")
+            editor.insert("1.0", mic_caption.DEFAULT_HOTWORDS)
+
+        def save():
+            try:
+                mic_caption.save_hotwords(editor.get("1.0", "end-1c"))
+            except OSError:
+                messagebox.showerror("识别热词", "无法保存热词", parent=dialog)
+                return
+            dialog.destroy()
+
+        ttk.Button(actions, text="恢复默认", command=restore).pack(side="left")
+        ttk.Button(actions, text="保存", command=save).pack(side="right")
+        editor.focus_set()
 
     def configure_mimo(self):
         parent = self.settings_parent()

@@ -10,7 +10,7 @@ vendor = src / "mic_vendor"
 sys.path.insert(0, str(vendor))
 model_name = "kami-asr-zh-en"
 model = Path(os.environ.get("KAMI_ASR_MODEL", str(Path(os.environ["LOCALAPPDATA"]) / "MiMoReader" / model_name)))
-model_files = ("tokens.txt", "encoder-epoch-99-avg-1.int8.onnx", "decoder-epoch-99-avg-1.onnx", "joiner-epoch-99-avg-1.int8.onnx")
+model_files = ("tokens.txt", "bpe.vocab", "encoder-epoch-99-avg-1.int8.onnx", "decoder-epoch-99-avg-1.onnx", "joiner-epoch-99-avg-1.int8.onnx")
 if not all((model / name).is_file() for name in model_files):
     raise SystemExit("Missing bilingual ASR model. Set KAMI_ASR_MODEL to the extracted model directory.")
 

@@ -14,6 +14,81 @@ MODEL_FILES = (
 )
 
 
+HOTWORD_FILE = Path(os.environ["LOCALAPPDATA"]) / "MiMoReader" / "asr-hotwords.txt"
+DEFAULT_HOTWORDS = """OBS Studio
+VTube Studio
+Piper 华燕
+咔咪字幕机
+哔哩哔哩
+哈基米
+哈基米南北绿豆
+曼波曼波
+从从容容游刃有余
+匆匆忙忙连滚带爬
+不烧心文学
+学知识不烧心
+立规矩
+生化摇
+爱你老己
+胆子真是肥嘟嘟的
+我家猫会后空翻
+我要验牌
+弹幕姬
+遇到难回答的问题又不说话了
+又不说话了
+三十年河东
+三十年河西
+莫欺少年穷
+你这瓜保熟吗
+这个我真绷不住了
+我嘞个豆
+这合理吗
+你先别急
+我就问你服不服
+稳住我们能赢
+别慌问题不大
+你是懂直播的
+这就是口碑
+有内味了
+直接给我看笑了
+这波在大气层
+听懂掌声
+阁下又该如何应对
+在绝对的实力面前
+坏了冲我来的
+你礼貌吗
+这下不得不信了
+差不多得了
+不是哥们
+给我整不会了
+这个可以有
+主包别急
+主播说句话啊
+"""
+
+
+def hotword_text():
+    try:
+        return HOTWORD_FILE.read_text(encoding="utf-8")
+    except (OSError, UnicodeError):
+        return DEFAULT_HOTWORDS
+
+
+def save_hotwords(text):
+    HOTWORD_FILE.parent.mkdir(parents=True, exist_ok=True)
+    HOTWORD_FILE.write_text(text, encoding="utf-8")
+
+
+def hotwords_for_stream():
+    words = {}
+    for line in hotword_text().splitlines():
+        for phrase in re.split(r"[，。！？、；,.!?;/]+", line):
+            phrase = " ".join(re.findall(r"[A-Za-z0-9\u3400-\u9fff]+", phrase.upper()))
+            if phrase:
+                words[phrase] = None
+    return "/".join(words)
+
+
 def load_recognizer(model_path):
     from sherpa_onnx import OnlineRecognizer
 
@@ -25,6 +100,7 @@ def load_recognizer(model_path):
         return OnlineRecognizer.from_transducer(
             *MODEL_FILES, num_threads=2, decoding_method="modified_beam_search",
             max_active_paths=4, enable_endpoint_detection=True,
+            modeling_unit="cjkchar+bpe", bpe_vocab="bpe.vocab", hotwords_score=1.5,
             rule1_min_trailing_silence=1.6, rule2_min_trailing_silence=0.85,
             rule3_min_utterance_length=11.0,
         )
@@ -68,7 +144,8 @@ def recognize(stop, results):
             results.put((stop, "error", "默认录音设备是虚拟线，请在 Windows 选择实体麦克风"))
             return
         rate = int(device["default_samplerate"])
-        stream = recognizer.create_stream()
+        hotwords = hotwords_for_stream()
+        stream = recognizer.create_stream(hotwords or None)
         last = ""
         with sd.RawInputStream(samplerate=rate, channels=1, dtype="int16") as mic:
             results.put((stop, "ready", ""))
