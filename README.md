@@ -33,7 +33,7 @@
 - `tokens.txt`
 - `lexicon.txt` 或完整的 `espeak-ng-data/` 文件夹
 
-AISHELL-3 通过这个入口使用默认发音人。只有 `.onnx` 和 `.onnx.json` 的 Piper 包，以及使用不同模型结构的 Matcha Baker，不能从这个入口导入。导入后软件会自动选中这个音色。重新导入可替换，点「移除」不会删除模型文件。
+AISHELL-3 通过这个入口使用默认发音人。只有 `.onnx` 和 `.onnx.json` 的 Piper 包，以及使用不同模型结构的 Matcha Baker，不能从这个入口导入。导入后，音色列表会显示模型文件名（不含扩展名），并自动选中刚导入的音色。可以保留多个模型；要移除某个模型，在「语音包」选中它再点「移除」，原文件会保留。
 
 ## 接入 OBS 和 VTube Studio
 

@@ -1,5 +1,6 @@
 from array import array
 import io
+import json
 import os
 from pathlib import Path, PurePosixPath
 import shutil
@@ -21,6 +22,7 @@ MODELS = {"AISHELL-3": "aishell3", MATCHA: "matcha-baker"}
 ARCHIVES = {"AISHELL-3": "Kami-AISHELL-3.zip", MATCHA: "Kami-Matcha-Baker.zip"}
 HOME = mambo.DATA / "voice-packs"
 CUSTOM_PATH = HOME / "custom-vits.txt"
+CUSTOM_INDEX = HOME / "custom-vits.json"
 FILES = {
     "AISHELL-3": ("model.onnx", "tokens.txt", "lexicon.txt"),
     MATCHA: ("model-steps-3.onnx", "vocos-22khz-univ.onnx", "tokens.txt", "lexicon.txt"),
@@ -30,11 +32,41 @@ lock = threading.Lock()
 engines = {}
 
 
-def root_for(name):
+def custom_packs():
+    try:
+        return json.loads(CUSTOM_INDEX.read_text(encoding="utf-8"))
+    except FileNotFoundError:
+        try:
+            root = Path(CUSTOM_PATH.read_text(encoding="utf-8"))
+            return {next(root.glob("*.onnx")).stem: str(root)} if complete(CUSTOM, root) else {}
+        except (OSError, UnicodeError):
+            return {}
+    except (OSError, ValueError):
+        return {}
+
+
+def custom_names():
+    return tuple(name for name, path in custom_packs().items() if complete(CUSTOM, Path(path)))
+
+
+def resolve_voice(name):
     if name == CUSTOM:
-        return Path(CUSTOM_PATH.read_text(encoding="utf-8"))
+        return next(iter(custom_names()), name)
+    return name
+
+
+def save_custom_packs(packs):
+    CUSTOM_INDEX.parent.mkdir(parents=True, exist_ok=True)
+    staged = CUSTOM_INDEX.with_suffix(".tmp")
+    staged.write_text(json.dumps(packs, ensure_ascii=False), encoding="utf-8")
+    staged.replace(CUSTOM_INDEX)
+
+
+def root_for(name):
     if name == HUAYAN:
         return bundled_root() / "voice-packs" / "huayan"
+    if name not in MODELS:
+        return Path(custom_packs()[resolve_voice(name)])
     try:
         return Path((HOME / (MODELS[name] + ".txt")).read_text(encoding="utf-8"))
     except FileNotFoundError:
@@ -42,13 +74,13 @@ def root_for(name):
 
 
 def is_local_voice(name):
-    return name in (HUAYAN, CUSTOM) or name in MODELS
+    return name in (HUAYAN, CUSTOM) or name in MODELS or name in custom_packs()
 
 
 def installed(name):
     try:
-        return complete(name, root_for(name))
-    except (OSError, UnicodeError):
+        return complete(name if name == HUAYAN or name in MODELS else CUSTOM, root_for(name))
+    except (OSError, UnicodeError, KeyError):
         return False
 
 
@@ -64,6 +96,18 @@ def register_custom(folder):
     root = Path(folder).resolve()
     if not complete(CUSTOM, root):
         raise ValueError("请选择包含一个 VITS ONNX、tokens.txt，以及 lexicon.txt 或 espeak-ng-data 的文件夹。")
+    base_name = next(root.glob("*.onnx")).stem
+    packs = custom_packs()
+    for name, path in packs.items():
+        if Path(path) == root:
+            return name
+    name = base_name
+    number = 2
+    while name in packs or name in (*MODELS, HUAYAN, CUSTOM, "系统朗读", "小米 MiMo", "曼波", "固定音色") or name.startswith("自定义 "):
+        name = f"{base_name} ({number})"
+        if name.startswith("自定义 "):
+            name = f"模型：{name}"
+        number += 1
     if not str(root).isascii() and str(HOME).isascii():
         HOME.mkdir(parents=True, exist_ok=True)
         with tempfile.TemporaryDirectory(dir=HOME, prefix="vits-staging-") as staging:
@@ -73,9 +117,9 @@ def register_custom(folder):
             copied.rename(target)
             root = target
     with lock:
-        CUSTOM_PATH.parent.mkdir(parents=True, exist_ok=True)
-        CUSTOM_PATH.write_text(str(root), encoding="utf-8")
-        engines.pop(CUSTOM, None)
+        packs[name] = str(root)
+        save_custom_packs(packs)
+    return name
 
 
 def import_custom_archive(path):
@@ -100,13 +144,15 @@ def import_custom_archive(path):
                 entry.rename(target / entry.name)
         else:
             selected.rename(target)
-        register_custom(target)
+        return register_custom(target)
 
 
-def remove_custom():
+def remove_custom(name):
     with lock:
-        CUSTOM_PATH.unlink(missing_ok=True)
-        engines.pop(CUSTOM, None)
+        packs = custom_packs()
+        packs.pop(name, None)
+        save_custom_packs(packs)
+        engines.pop(name, None)
 
 
 def install(name, archive, folder=HOME):
@@ -226,6 +272,7 @@ def uninstall_mambo():
 def synthesize(name, text, speaker=0):
     import sherpa_onnx as sherpa
 
+    name = resolve_voice(name)
     with lock:
         if not installed(name):
             raise ValueError("语音包尚未安装")
@@ -239,7 +286,7 @@ def synthesize(name, text, speaker=0):
                     tokens=file("tokens.txt"), lexicon=file("lexicon.txt"),
                 )
                 model = sherpa.OfflineTtsModelConfig(matcha=config, num_threads=2, provider="cpu")
-            elif name == CUSTOM:
+            elif name != HUAYAN and name not in MODELS:
                 config = sherpa.OfflineTtsVitsModelConfig(
                     model=str(next(root.glob("*.onnx"))), tokens=file("tokens.txt"),
                     lexicon=file("lexicon.txt") if (root / "lexicon.txt").is_file() else "",

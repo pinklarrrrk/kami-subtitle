@@ -85,7 +85,7 @@ def synthesize(text, voice=None, reference=None, transcript="", speaker=None):
 
 def web_synthesize(text):
     try:
-        voice = VOICE_FILE.read_text(encoding="utf-8").strip()
+        voice = voice_packs.resolve_voice(VOICE_FILE.read_text(encoding="utf-8").strip())
     except (OSError, UnicodeError):
         voice = default_voice()
     if voice_packs.is_local_voice(voice):

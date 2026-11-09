@@ -304,7 +304,7 @@ class Reader:
         voice_row.pack(fill="x")
         ttk.Label(voice_row, text="音色", style="Card.TLabel").pack(side="left", padx=(0, 8))
         try:
-            saved_voice = VOICE_FILE.read_text(encoding="utf-8").strip()
+            saved_voice = voice_packs.resolve_voice(VOICE_FILE.read_text(encoding="utf-8").strip())
         except (OSError, UnicodeError):
             saved_voice = speech.default_voice()
         self.slot_names = {}
@@ -485,7 +485,7 @@ class Reader:
         self.copy_hint_timer = None
 
     def show_about(self):
-        version = "v1.0.2"
+        version = "v1.0.3"
         dialog = tk.Toplevel(self.settings_parent())
         dialog.title("关于咔咪字幕机")
         dialog.transient(self.settings_parent())
@@ -682,7 +682,7 @@ class Reader:
 
     def voice_options(self):
         options = (*(name for name in (voice_packs.HUAYAN,) if voice_packs.installed(name)),
-                   speech.SYSTEM, *(name for name in (*voice_packs.MODELS, voice_packs.CUSTOM) if voice_packs.installed(name)), mimo_cloud.NAME)
+                   speech.SYSTEM, *(name for name in voice_packs.MODELS if voice_packs.installed(name)), *voice_packs.custom_names(), mimo_cloud.NAME)
         if not mambo.locate():
             return options
         def available(slot):
@@ -1016,7 +1016,14 @@ class Reader:
         panel.pack(fill="both", expand=True)
         progress = tk.StringVar(dialog)
 
-        def refresh():
+        def refresh(selected=None):
+            names = tuple(voice_packs.custom_packs())
+            model_picker.configure(values=names)
+            if selected in names:
+                model_picker.set(selected)
+            elif model_picker.get() not in names:
+                model_picker.set(names[0] if names else "")
+            custom_remove.state(["!disabled"] if names else ["disabled"])
             options = self.voice_options()
             self.picker.configure(values=options)
             if self.voice.get() not in options:
@@ -1027,24 +1034,26 @@ class Reader:
         def custom_pack(remove=False, archive=None):
             try:
                 if remove:
-                    voice_packs.remove_custom()
+                    name = model_picker.get()
+                    if not name:
+                        return
+                    voice_packs.remove_custom(name)
                 else:
                     if archive is None:
                         folder = filedialog.askdirectory(parent=dialog, title="选择解压后的 sherpa-onnx VITS 语音包")
                         if not folder:
                             return
-                        voice_packs.register_custom(folder)
+                        name = voice_packs.register_custom(folder)
                     else:
                         if not archive.lower().endswith(".tar.bz2"):
                             raise ValueError("请选择一个 .tar.bz2 语音包。")
                         progress.set("正在解压语音包…")
                         dialog.update_idletasks()
-                        voice_packs.import_custom_archive(archive)
-                    self.voice.set(voice_packs.CUSTOM)
+                        name = voice_packs.import_custom_archive(archive)
+                    self.voice.set(name)
                     self.save_voice()
-                refresh()
-                custom_remove.state(["!disabled"] if voice_packs.CUSTOM_PATH.exists() else ["disabled"])
-                progress.set("已移除自定义语音包" if remove else "已导入自定义语音包")
+                refresh(None if remove else name)
+                progress.set(f"已移除 {name}" if remove else f"已导入 {name}")
             except (OSError, ValueError, tarfile.TarError) as exc:
                 progress.set("")
                 messagebox.showerror("自定义语音包", str(exc), parent=dialog)
@@ -1064,12 +1073,11 @@ class Reader:
         dialog.drop_target_register(DND_FILES)
         dialog.dnd_bind("<<Drop>>", drop_archive)
 
-        ttk.Label(panel, text="自定义离线语音").grid(row=0, column=0, sticky="w")
-        ttk.Button(panel, text="导入文件夹…", command=custom_pack).grid(row=0, column=1, pady=3)
+        model_picker = ttk.Combobox(panel, state="readonly", width=30)
+        model_picker.grid(row=0, column=0, columnspan=2, sticky="ew", pady=3)
+        ttk.Button(panel, text="导入文件夹…", command=custom_pack).grid(row=1, column=2, padx=(6, 0), pady=3)
         custom_remove = ttk.Button(panel, text="移除", command=lambda: custom_pack(True))
         custom_remove.grid(row=0, column=2, pady=3)
-        if not voice_packs.CUSTOM_PATH.exists():
-            custom_remove.state(["disabled"])
         ttk.Button(panel, text="导入压缩包…", command=choose_archive).grid(row=1, column=1, pady=3)
         ttk.Label(panel, text="可将 .tar.bz2 拖到此窗口").grid(row=1, column=0, sticky="w")
         ttk.Label(panel, textvariable=progress).grid(row=2, column=0, columnspan=3, sticky="w")
