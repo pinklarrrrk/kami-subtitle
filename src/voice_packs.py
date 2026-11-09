@@ -15,9 +15,11 @@ import mambo
 
 HUAYAN = "Piper 华燕"
 MATCHA = "Matcha Baker"
+CUSTOM = "自定义离线语音"
 MODELS = {"AISHELL-3": "aishell3", MATCHA: "matcha-baker"}
 ARCHIVES = {"AISHELL-3": "Kami-AISHELL-3.zip", MATCHA: "Kami-Matcha-Baker.zip"}
 HOME = mambo.DATA / "voice-packs"
+CUSTOM_PATH = HOME / "custom-vits.txt"
 FILES = {
     "AISHELL-3": ("model.onnx", "tokens.txt", "lexicon.txt"),
     MATCHA: ("model-steps-3.onnx", "vocos-22khz-univ.onnx", "tokens.txt", "lexicon.txt"),
@@ -28,6 +30,8 @@ engines = {}
 
 
 def root_for(name):
+    if name == CUSTOM:
+        return Path(CUSTOM_PATH.read_text(encoding="utf-8"))
     if name == HUAYAN:
         return bundled_root() / "voice-packs" / "huayan"
     try:
@@ -37,16 +41,38 @@ def root_for(name):
 
 
 def is_local_voice(name):
-    return name == HUAYAN or name in MODELS
+    return name in (HUAYAN, CUSTOM) or name in MODELS
 
 
 def installed(name):
-    root = root_for(name)
-    return complete(name, root)
+    try:
+        return complete(name, root_for(name))
+    except (OSError, UnicodeError):
+        return False
 
 
 def complete(name, root):
+    if name == CUSTOM:
+        return (root.is_dir() and len(list(root.glob("*.onnx"))) == 1
+                and (root / "tokens.txt").is_file()
+                and ((root / "lexicon.txt").is_file() or (root / "espeak-ng-data" / "phondata").is_file()))
     return all((root / filename).is_file() for filename in FILES[name])
+
+
+def register_custom(folder):
+    root = Path(folder).resolve()
+    if not complete(CUSTOM, root):
+        raise ValueError("请选择包含一个 VITS ONNX、tokens.txt，以及 lexicon.txt 或 espeak-ng-data 的文件夹。")
+    with lock:
+        CUSTOM_PATH.parent.mkdir(parents=True, exist_ok=True)
+        CUSTOM_PATH.write_text(str(root), encoding="utf-8")
+        engines.pop(CUSTOM, None)
+
+
+def remove_custom():
+    with lock:
+        CUSTOM_PATH.unlink(missing_ok=True)
+        engines.pop(CUSTOM, None)
 
 
 def install(name, archive, folder=HOME):
@@ -179,6 +205,13 @@ def synthesize(name, text, speaker=0):
                     tokens=file("tokens.txt"), lexicon=file("lexicon.txt"),
                 )
                 model = sherpa.OfflineTtsModelConfig(matcha=config, num_threads=2, provider="cpu")
+            elif name == CUSTOM:
+                config = sherpa.OfflineTtsVitsModelConfig(
+                    model=str(next(root.glob("*.onnx"))), tokens=file("tokens.txt"),
+                    lexicon=file("lexicon.txt") if (root / "lexicon.txt").is_file() else "",
+                    data_dir=file("espeak-ng-data") if (root / "espeak-ng-data" / "phondata").is_file() else "",
+                )
+                model = sherpa.OfflineTtsModelConfig(vits=config, num_threads=2, provider="cpu")
             else:
                 config = sherpa.OfflineTtsVitsModelConfig(
                     model=file("zh_CN-huayan-medium.onnx" if name == HUAYAN else "model.onnx"),

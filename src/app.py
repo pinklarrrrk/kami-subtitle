@@ -681,7 +681,7 @@ class Reader:
 
     def voice_options(self):
         options = (*(name for name in (voice_packs.HUAYAN,) if voice_packs.installed(name)),
-                   speech.SYSTEM, *(name for name in voice_packs.MODELS if voice_packs.installed(name)), mimo_cloud.NAME)
+                   speech.SYSTEM, *(name for name in (*voice_packs.MODELS, voice_packs.CUSTOM) if voice_packs.installed(name)), mimo_cloud.NAME)
         if not mambo.locate():
             return options
         def available(slot):
@@ -1084,7 +1084,7 @@ class Reader:
         mambo_size = (sum((mambo_package / file).stat().st_size for file in voice_packs.MAMBO_FILES) / 1e9
                       if mambo_package else 0)
         package_labels = {
-            speech.AISHELL: "AISHELL-3 · 约 28 MB（已随软件提供）",
+            speech.AISHELL: ("AISHELL-3 · 约 28 MB" if (voice_packs.bundled_root() / "voice-packs" / voice_packs.ARCHIVES[speech.AISHELL]).is_file() else "AISHELL-3 · 未找到语音包"),
             voice_packs.MATCHA: f"Matcha Baker · 约 {(voice_packs.bundled_root() / 'voice-packs' / voice_packs.ARCHIVES[voice_packs.MATCHA]).stat().st_size / 1e6:.0f} MB"
                                if (voice_packs.bundled_root() / 'voice-packs' / voice_packs.ARCHIVES[voice_packs.MATCHA]).is_file() else "Matcha Baker · 未找到语音包",
             "曼波": (f"曼波 · 独立包约 {mambo_size:.1f} GB" if mambo_package else "曼波 · 未找到独立包")
@@ -1097,7 +1097,32 @@ class Reader:
             add.grid(row=row, column=1, padx=4, pady=3)
             remove.grid(row=row, column=2, pady=3)
             buttons[name] = (add, remove)
-        location_row = row + 1
+        def custom_pack(remove=False):
+            if working:
+                return
+            try:
+                if remove:
+                    voice_packs.remove_custom()
+                else:
+                    folder = filedialog.askdirectory(parent=dialog, title="选择解压后的 sherpa-onnx VITS 语音包")
+                    if not folder:
+                        return
+                    voice_packs.register_custom(folder)
+                    self.voice.set(voice_packs.CUSTOM)
+                    self.save_voice()
+                refresh()
+                custom_remove.state(["!disabled"] if voice_packs.CUSTOM_PATH.exists() else ["disabled"])
+                progress.set("已移除自定义语音包" if remove else "已导入自定义语音包")
+            except (OSError, ValueError) as exc:
+                messagebox.showerror("自定义语音包", str(exc), parent=dialog)
+
+        ttk.Label(panel, text="自定义离线语音").grid(row=row + 1, column=0, sticky="w")
+        ttk.Button(panel, text="导入文件夹…", command=custom_pack).grid(row=row + 1, column=1, pady=3)
+        custom_remove = ttk.Button(panel, text="移除", command=lambda: custom_pack(True))
+        custom_remove.grid(row=row + 1, column=2, pady=3)
+        if not voice_packs.CUSTOM_PATH.exists():
+            custom_remove.state(["disabled"])
+        location_row = row + 2
         ttk.Label(panel, text="保存位置").grid(row=location_row, column=0, sticky="w")
         ttk.Entry(panel, textvariable=destination, width=32).grid(row=location_row, column=1, padx=4, pady=6)
         ttk.Button(panel, text="浏览…", command=choose_location).grid(row=location_row, column=2)
