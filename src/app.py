@@ -27,6 +27,7 @@ import winsound
 import zlib
 
 import cable_audio
+import japanese_caption
 import mic_caption
 import mambo
 import mimo_cloud
@@ -353,6 +354,10 @@ class Reader:
         self.cable_install = ttk.Button(output_card, text="一键安装虚拟麦克风", style="Card.Soft.TButton",
                                         command=self.install_virtual_mic)
         self.cable_install.pack(side="left", padx=(8, 0))
+        language_card = card("麦克风字幕")
+        self.japanese_mic = tk.BooleanVar(value=False)
+        ttk.Checkbutton(language_card, text="日语 → 日中双语", variable=self.japanese_mic,
+                        style="Card.TCheckbutton", command=self.change_mic_language).pack(side="left")
         app_card = card("窗口")
         pin = tk.BooleanVar(value=True)
         ttk.Checkbutton(app_card, text="主窗口置顶", variable=pin, style="Card.TCheckbutton",
@@ -408,6 +413,15 @@ class Reader:
     def enter_to_read(self, event):
         return self.start(event)
 
+    def change_mic_language(self):
+        if self.japanese_mic.get() and not japanese_caption.installed():
+            self.japanese_mic.set(False)
+            messagebox.showinfo("日语字幕包", "请先安装离线日语字幕包。", parent=self.settings_parent())
+            return
+        if self.mic_stop is not None:
+            self.toggle_mic()
+            self.status.set("字幕语言已切换，再点「开麦字幕」开始")
+
     def toggle_mic(self):
         if self.mic_stop is not None:
             self.mic_stop.set()
@@ -421,7 +435,8 @@ class Reader:
         self.mic_stop = threading.Event()
         self.mic_button.configure(text="关麦 · 打字")
         self.status.set("正在启动麦克风字幕…")
-        threading.Thread(target=mic_caption.recognize, args=(self.mic_stop, self.mic_results), daemon=True).start()
+        recognize = japanese_caption.recognize if self.japanese_mic.get() else mic_caption.recognize
+        threading.Thread(target=recognize, args=(self.mic_stop, self.mic_results), daemon=True).start()
 
     def poll_mic(self):
         while True:
@@ -434,8 +449,8 @@ class Reader:
             if kind == "error":
                 self.toggle_mic()
                 self.status.set(text)
-            elif kind == "ready" and not self.busy:
-                self.status.set("麦克风字幕已开启")
+            elif kind in ("ready", "notice") and not self.busy:
+                self.status.set(text or "麦克风字幕已开启")
             elif kind == "text" and not self.busy and (self.caption_timer is None or self.mic_owns_caption):
                 try:
                     self.write_caption(text, min(6, max(1.8, len(text) * .15)))
@@ -525,7 +540,7 @@ class Reader:
         return dialog
 
     def show_about(self):
-        version = "v1.0.10"
+        version = "v1.0.11"
         dialog = self.new_dialog(self.settings_parent())
         dialog.title("关于咔咪字幕机")
         dialog.transient(self.settings_parent())
