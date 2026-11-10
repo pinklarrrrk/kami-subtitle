@@ -3,7 +3,6 @@ from contextlib import chdir
 import os
 from pathlib import Path
 import re
-import sys
 
 MODEL_DIR = "kami-asr-zh-en"
 MODEL_FILES = (
@@ -122,9 +121,6 @@ def decode_chunk(recognizer, stream, rate, samples):
 
 def recognize(stop, results):
     base = Path(__file__).resolve().parent
-    vendor = str(base / "mic_vendor")
-    if vendor not in sys.path:
-        sys.path.insert(0, vendor)
     model_path = base / MODEL_DIR
     if not model_path.is_dir():
         model_path = Path(os.environ.get("KAMI_ASR_MODEL", str(Path(os.environ["LOCALAPPDATA"]) / "MiMoReader" / MODEL_DIR)))

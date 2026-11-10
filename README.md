@@ -42,16 +42,18 @@ AISHELL-3 通过这个入口使用默认发音人。只有 `.onnx` 和 `.onnx.js
 1. 在咔咪字幕机里点「OBS 字幕地址」复制链接。
 2. 在 OBS 添加「浏览器」来源，关闭「本地文件」，粘贴链接。宽高设为画布尺寸，例如 1920 × 1080。
 
-在「设置 → 字幕样式」可切换字幕和气泡，预览并调整字体、颜色、底色透明度和换行字数。麦克风识别只输出字幕；要录入朗读声音，请在 OBS 添加相应的音频来源。已配置 VB-CABLE 的用户可勾选「送到 VTS」，用朗读声音驱动口型。
+在「设置 → 字幕样式」可切换字幕和气泡，预览并调整字体、颜色、底色透明度和换行字数。麦克风识别只输出字幕；要录入朗读声音，请在 OBS 添加相应的音频来源。
+
+要用朗读声音驱动口型，在「设置 → 字幕与输出」点「一键安装虚拟麦克风」，按提示安装 VB-CABLE 并重启电脑。然后勾选「送到 VTS」，在 VTube Studio 选择「CABLE Output」作为麦克风。
 
 ## 从源码构建
 
-在 Windows x64 安装 Python 3.12。下载并解压 [Zipformer 中英识别模型](https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/sherpa-onnx-streaming-zipformer-bilingual-zh-en-2023-02-20-mobile.tar.bz2)，将环境变量 `KAMI_ASR_MODEL` 指向解压后的模型目录，然后运行：
+在 Windows x64 安装 Python 3.14。下载并解压 [Zipformer 中英识别模型](https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/sherpa-onnx-streaming-zipformer-bilingual-zh-en-2023-02-20-mobile.tar.bz2)，将环境变量 `KAMI_ASR_MODEL` 指向解压后的模型目录，然后运行：
 
 ```powershell
-py -3.12 -m pip install pyinstaller==6.22.3 pywin32==311 sherpa-onnx==1.12.40 tkinterdnd2==0.7.0
-py -3.12 -m pip install --target src/mic_vendor sounddevice==0.5.6
-py -3.12 -m PyInstaller --noconfirm Kami.spec
+py -3.14 -m venv .venv
+& .\.venv\Scripts\python.exe -m pip install pyinstaller==6.22.3 pywin32==311 sherpa-onnx==1.12.40 tkinterdnd2==0.7.0 sounddevice==0.5.6 audioop-lts==0.2.2
+& .\.venv\Scripts\python.exe -m PyInstaller --noconfirm Kami.spec
 ```
 
 构建结果位于 `dist/Kami-Windows-x64`。

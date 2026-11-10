@@ -350,6 +350,9 @@ class Reader:
         output_card = card("字幕与输出")
         ttk.Button(output_card, text="字幕样式…", style="Card.Soft.TButton", command=self.edit_subtitle_style).pack(side="left")
         ttk.Checkbutton(output_card, text="送到 VTS", variable=self.vts, style="Card.TCheckbutton").pack(side="left", padx=(12, 0))
+        self.cable_install = ttk.Button(output_card, text="一键安装虚拟麦克风", style="Card.Soft.TButton",
+                                        command=self.install_virtual_mic)
+        self.cable_install.pack(side="left", padx=(8, 0))
         app_card = card("窗口")
         pin = tk.BooleanVar(value=True)
         ttk.Checkbutton(app_card, text="主窗口置顶", variable=pin, style="Card.TCheckbutton",
@@ -452,6 +455,36 @@ class Reader:
     def settings_parent(self):
         return self.root if self.settings_window.state() == "withdrawn" else self.settings_window
 
+    def install_virtual_mic(self):
+        self.cable_install.configure(text="正在准备安装…", state="disabled")
+        result = queue.Queue()
+
+        def install():
+            try:
+                if cable_audio.output_device() is not None:
+                    result.put((False, "已检测到 VB-CABLE。勾选「送到 VTS」，然后在 VTS 选择 CABLE Output。"))
+                    return
+                cable_audio.install_driver()
+                result.put((False, "如已完成安装，请重启电脑。然后勾选「送到 VTS」，在 VTS 选择 CABLE Output。"))
+            except Exception as error:
+                if getattr(error, "winerror", None) == 1223:
+                    result.put((False, "已取消安装。"))
+                else:
+                    result.put((True, f"无法安装 VB-CABLE：{error}"))
+
+        def poll():
+            try:
+                failed, message = result.get_nowait()
+            except queue.Empty:
+                self.root.after(100, poll)
+                return
+            self.cable_install.configure(text="一键安装虚拟麦克风", state="normal")
+            show = messagebox.showerror if failed else messagebox.showinfo
+            show("虚拟麦克风", message, parent=self.settings_parent())
+
+        threading.Thread(target=install, daemon=True).start()
+        poll()
+
     def write_caption(self, text, seconds=0):
         from web import ORIGIN
 
@@ -492,7 +525,7 @@ class Reader:
         return dialog
 
     def show_about(self):
-        version = "v1.0.6"
+        version = "v1.0.7"
         dialog = self.new_dialog(self.settings_parent())
         dialog.title("关于咔咪字幕机")
         dialog.transient(self.settings_parent())
