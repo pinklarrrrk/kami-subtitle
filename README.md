@@ -20,15 +20,15 @@
 
 ### 导入自定义离线语音包
 
-下面是 sherpa-onnx 提供的离线语音包，按需要选一个下载：
+一句话里经常夹英文？**优先选 Matcha 中英双语**。下载模型和声码器后，按表格下方的步骤导入。
 
 | 下载 | 语言 | 解压后选择的文件夹 |
 | --- | --- | --- |
+| [★ Matcha 中英双语（首选）](https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/matcha-icefall-zh-en.tar.bz2) | 支持一句里中英混读 | `matcha-icefall-zh-en`（需另下 [Vocos 16 kHz 声码器](https://github.com/k2-fsa/sherpa-onnx/releases/download/vocoder-models/vocos-16khz-univ.onnx)，见下方导入步骤） |
 | [Piper 华燕](https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/vits-piper-zh_CN-huayan-medium.tar.bz2) | 普通话 | `vits-piper-zh_CN-huayan-medium` |
 | [AISHELL-3](https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/vits-icefall-zh-aishell3.tar.bz2) | 普通话 | `vits-icefall-zh-aishell3` |
 | [凡尘 WNJ](https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/vits-zh-hf-fanchen-wnj.tar.bz2) | 普通话男声 | `vits-zh-hf-fanchen-wnj` |
 | [MeloTTS 中英双语](https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/vits-melo-tts-zh_en.tar.bz2) | 支持一句里中英混读 | v1.0.8 起可直接导入官方压缩包 |
-| [★ Matcha 中英双语](https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/matcha-icefall-zh-en.tar.bz2) | 支持一句里中英混读 | `matcha-icefall-zh-en`（需另下 [Vocos 16 kHz 声码器](https://github.com/k2-fsa/sherpa-onnx/releases/download/vocoder-models/vocos-16khz-univ.onnx)，见下方导入步骤） |
 | [Piper Amy](https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/vits-piper-en_US-amy-low.tar.bz2) | 美式英语 | `vits-piper-en_US-amy-low` |
 | [Piper Lessac](https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/vits-piper-en_US-lessac-medium.tar.bz2) | 美式英语 | `vits-piper-en_US-lessac-medium` |
 
