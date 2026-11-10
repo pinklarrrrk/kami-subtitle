@@ -1,5 +1,7 @@
 # 咔咪字幕机
 
+**[下载最新版 · Windows x64](https://github.com/pinklarrrrk/kami-subtitle/releases/latest)** · [使用说明](#下载和使用) · [语音包](#朗读音色)
+
 免费的 Windows 朗读与字幕工具。可以打字朗读，也可以把麦克风里的中英混合语音实时转成 OBS 字幕。
 
 ## 下载和使用
