@@ -525,7 +525,7 @@ class Reader:
         return dialog
 
     def show_about(self):
-        version = "v1.0.9"
+        version = "v1.0.10"
         dialog = self.new_dialog(self.settings_parent())
         dialog.title("关于咔咪字幕机")
         dialog.transient(self.settings_parent())

@@ -2,6 +2,7 @@ from array import array
 import io
 import json
 import os
+import re
 from pathlib import Path, PurePosixPath
 import shutil
 import subprocess
@@ -301,6 +302,19 @@ def uninstall_mambo():
     mambo.LOCATION.unlink(missing_ok=True)
 
 
+LETTER_SOUNDS = ("诶", "比", "西", "迪", "伊", "艾弗", "吉", "艾尺", "爱",
+                 "杰", "开", "艾勒", "艾姆", "恩", "欧", "皮", "丘", "阿尔",
+                 "艾斯", "踢", "优", "维", "达不溜", "艾克斯", "歪", "贼德")
+
+
+def chinese_letter_fallback(name, root, text):
+    if name not in (HUAYAN, MATCHA, "AISHELL-3"):
+        model = custom_model(root)
+        if model is None or not model.stem.startswith(("zh_CN-huayan-", "vits-icefall-zh-aishell3", "vits-zh-hf-fanchen-wnj")):
+            return text
+    return re.sub(r"[A-Za-z]", lambda match: LETTER_SOUNDS[ord(match[0].upper()) - ord("A")], text)
+
+
 def synthesize(name, text, speaker=0):
     import sherpa_onnx as sherpa
 
@@ -308,8 +322,8 @@ def synthesize(name, text, speaker=0):
     with lock:
         if not installed(name):
             raise ValueError("语音包尚未安装")
+        root = root_for(name)
         if name not in engines:
-            root = root_for(name)
             def file(filename):
                 return str(root / filename)
             if name == MATCHA or is_bilingual_matcha(root):
@@ -337,7 +351,7 @@ def synthesize(name, text, speaker=0):
                 model = sherpa.OfflineTtsModelConfig(vits=config, num_threads=2, provider="cpu")
             rules = ",".join(str(path) for path in sorted(root.glob("*.fst")))
             engines[name] = sherpa.OfflineTts(sherpa.OfflineTtsConfig(model=model, rule_fsts=rules))
-        audio = engines[name].generate(text, sid=speaker)
+        audio = engines[name].generate(chinese_letter_fallback(name, root, text), sid=speaker)
     pcm = array("h", (round(max(-1, min(1, sample)) * 32767) for sample in audio.samples))
     if not pcm:
         raise ValueError("语音包没有生成声音")

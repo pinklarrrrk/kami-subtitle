@@ -40,6 +40,8 @@
 
 AISHELL-3 使用默认发音人。只有 `.onnx` 和 `.onnx.json` 的 Piper 包不能直接导入。导入后会自动选中新音色；可以保留多个音色，点「移除」不会删除原文件。
 
+华燕、AISHELL-3、凡尘 WNJ 和 Matcha Baker 会用中文近似发音逐字母朗读英文，例如把 `OBS` 读成「欧比艾斯」。字幕保留原文。需要按英文单词发音时，推荐使用 Matcha 中英双语。
+
 ### 导入 Matcha 中英双语
 
 1. 下载并解压 [Matcha 中英双语模型](https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/matcha-icefall-zh-en.tar.bz2)。
