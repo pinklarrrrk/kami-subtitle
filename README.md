@@ -25,13 +25,13 @@
 | [Piper 华燕](https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/vits-piper-zh_CN-huayan-medium.tar.bz2) | 普通话 | `vits-piper-zh_CN-huayan-medium` |
 | [AISHELL-3](https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/vits-icefall-zh-aishell3.tar.bz2) | 普通话 | `vits-icefall-zh-aishell3` |
 | [凡尘 WNJ](https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/vits-zh-hf-fanchen-wnj.tar.bz2) | 普通话男声 | `vits-zh-hf-fanchen-wnj` |
-| [MeloTTS 中英双语](https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/vits-melo-tts-zh_en.tar.bz2) | 普通话、英语 | `vits-melo-tts-zh_en` |
+| [MeloTTS 中英双语](https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/vits-melo-tts-zh_en.tar.bz2) | 支持一句里中英混读 | v1.0.8 起可直接导入官方压缩包 |
 | [Piper Amy](https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/vits-piper-en_US-amy-low.tar.bz2) | 美式英语 | `vits-piper-en_US-amy-low` |
 | [Piper Lessac](https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/vits-piper-en_US-lessac-medium.tar.bz2) | 美式英语 | `vits-piper-en_US-lessac-medium` |
 
 下载后，打开「设置 → 语音包」，把 `.tar.bz2` 拖进窗口，或点击「导入压缩包…」。如果已解压，点击「导入文件夹…」，选中直接包含以下文件的那一层：
 
-- 一个 VITS `.onnx` 模型
+- 一个 VITS `.onnx` 模型；如果同时附带同名的 `.int8.onnx`，咔咪会自动选择标准版
 - `tokens.txt`
 - `lexicon.txt` 或完整的 `espeak-ng-data/` 文件夹
 

@@ -38,7 +38,7 @@ def custom_packs():
     except FileNotFoundError:
         try:
             root = Path(CUSTOM_PATH.read_text(encoding="utf-8"))
-            return {next(root.glob("*.onnx")).stem: str(root)} if complete(CUSTOM, root) else {}
+            return {custom_model(root).stem: str(root)} if complete(CUSTOM, root) else {}
         except (OSError, UnicodeError):
             return {}
     except (OSError, ValueError):
@@ -84,19 +84,31 @@ def installed(name):
         return False
 
 
+def custom_model(root):
+    models = {path.name: path for path in root.glob("*.onnx") if path.is_file()}
+    if len(models) == 1:
+        return next(iter(models.values()))
+    if len(models) == 2:
+        for path in models.values():
+            if f"{path.stem}.int8.onnx" in models:
+                return path
+    return None
+
+
 def complete(name, root):
     if name == CUSTOM:
-        return (root.is_dir() and len(list(root.glob("*.onnx"))) == 1
+        return (root.is_dir() and custom_model(root) is not None
                 and (root / "tokens.txt").is_file()
                 and ((root / "lexicon.txt").is_file() or (root / "espeak-ng-data" / "phondata").is_file()))
     return all((root / filename).is_file() for filename in FILES[name])
 
 
-def register_custom(folder):
+def register_custom(folder, pack_name=None):
     root = Path(folder).resolve()
     if not complete(CUSTOM, root):
         raise ValueError("请选择包含一个 VITS ONNX、tokens.txt，以及 lexicon.txt 或 espeak-ng-data 的文件夹。")
-    base_name = next(root.glob("*.onnx")).stem
+    model = custom_model(root)
+    base_name = "MeloTTS 中英双语" if (pack_name or root.name) == "vits-melo-tts-zh_en" else model.stem
     packs = custom_packs()
     for name, path in packs.items():
         if Path(path) == root:
@@ -144,7 +156,7 @@ def import_custom_archive(path):
                 entry.rename(target / entry.name)
         else:
             selected.rename(target)
-        return register_custom(target)
+        return register_custom(target, selected.name)
 
 
 def remove_custom(name):
@@ -288,7 +300,7 @@ def synthesize(name, text, speaker=0):
                 model = sherpa.OfflineTtsModelConfig(matcha=config, num_threads=2, provider="cpu")
             elif name != HUAYAN and name not in MODELS:
                 config = sherpa.OfflineTtsVitsModelConfig(
-                    model=str(next(root.glob("*.onnx"))), tokens=file("tokens.txt"),
+                    model=str(custom_model(root)), tokens=file("tokens.txt"),
                     lexicon=file("lexicon.txt") if (root / "lexicon.txt").is_file() else "",
                     data_dir=file("espeak-ng-data") if (root / "espeak-ng-data" / "phondata").is_file() else "",
                 )
