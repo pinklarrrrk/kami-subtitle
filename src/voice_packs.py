@@ -17,6 +17,9 @@ import mambo
 
 HUAYAN = "Piper 华燕"
 MATCHA = "Matcha Baker"
+MATCHA_BILINGUAL = "Matcha 中英双语"
+MATCHA_BILINGUAL_FILES = ("model-steps-3.onnx", "vocos-16khz-univ.onnx",
+                         "tokens.txt", "lexicon.txt", "espeak-ng-data/phondata")
 CUSTOM = "自定义离线语音"
 MODELS = {"AISHELL-3": "aishell3", MATCHA: "matcha-baker"}
 ARCHIVES = {"AISHELL-3": "Kami-AISHELL-3.zip", MATCHA: "Kami-Matcha-Baker.zip"}
@@ -38,7 +41,7 @@ def custom_packs():
     except FileNotFoundError:
         try:
             root = Path(CUSTOM_PATH.read_text(encoding="utf-8"))
-            return {custom_model(root).stem: str(root)} if complete(CUSTOM, root) else {}
+            return {custom_label(root): str(root)} if complete(CUSTOM, root) else {}
         except (OSError, UnicodeError):
             return {}
     except (OSError, ValueError):
@@ -95,8 +98,22 @@ def custom_model(root):
     return None
 
 
+def is_bilingual_matcha(root):
+    return all((root / filename).is_file() for filename in MATCHA_BILINGUAL_FILES)
+
+
+def custom_label(root, pack_name=None):
+    if is_bilingual_matcha(root):
+        return MATCHA_BILINGUAL
+    if (pack_name or root.name) == "vits-melo-tts-zh_en":
+        return "MeloTTS 中英双语"
+    return custom_model(root).stem
+
+
 def complete(name, root):
     if name == CUSTOM:
+        if (root / "model-steps-3.onnx").is_file():
+            return is_bilingual_matcha(root)
         return (root.is_dir() and custom_model(root) is not None
                 and (root / "tokens.txt").is_file()
                 and ((root / "lexicon.txt").is_file() or (root / "espeak-ng-data" / "phondata").is_file()))
@@ -106,9 +123,10 @@ def complete(name, root):
 def register_custom(folder, pack_name=None):
     root = Path(folder).resolve()
     if not complete(CUSTOM, root):
+        if (root / "model-steps-3.onnx").is_file():
+            raise ValueError("Matcha 中英双语包不完整。请将 vocos-16khz-univ.onnx 放入解压后的模型目录，再导入文件夹。")
         raise ValueError("请选择包含一个 VITS ONNX、tokens.txt，以及 lexicon.txt 或 espeak-ng-data 的文件夹。")
-    model = custom_model(root)
-    base_name = "MeloTTS 中英双语" if (pack_name or root.name) == "vits-melo-tts-zh_en" else model.stem
+    base_name = custom_label(root, pack_name)
     packs = custom_packs()
     for name, path in packs.items():
         if Path(path) == root:
@@ -147,7 +165,9 @@ def import_custom_archive(path):
             archive.extractall(root, filter=safe_file)
         candidates = {model.parent for model in root.rglob("*.onnx") if complete(CUSTOM, model.parent)}
         if len(candidates) != 1:
-            raise ValueError("压缩包里需要有且只有一个兼容的 VITS 模型文件夹。")
+            if not candidates and any(root.rglob("model-steps-3.onnx")):
+                raise ValueError("请先解压 Matcha 中英双语包，把 vocos-16khz-univ.onnx 放进模型目录，再导入文件夹。")
+            raise ValueError("压缩包里需要有且只有一个兼容的语音模型文件夹。")
         target = HOME / root.name.replace("vits-staging-", "vits-import-")
         selected = candidates.pop()
         if selected == root:
@@ -292,10 +312,13 @@ def synthesize(name, text, speaker=0):
             root = root_for(name)
             def file(filename):
                 return str(root / filename)
-            if name == MATCHA:
+            if name == MATCHA or is_bilingual_matcha(root):
+                bilingual = name != MATCHA
                 config = sherpa.OfflineTtsMatchaModelConfig(
-                    acoustic_model=file("model-steps-3.onnx"), vocoder=file("vocos-22khz-univ.onnx"),
+                    acoustic_model=file("model-steps-3.onnx"),
+                    vocoder=file("vocos-16khz-univ.onnx" if bilingual else "vocos-22khz-univ.onnx"),
                     tokens=file("tokens.txt"), lexicon=file("lexicon.txt"),
+                    data_dir=file("espeak-ng-data") if bilingual else "",
                 )
                 model = sherpa.OfflineTtsModelConfig(matcha=config, num_threads=2, provider="cpu")
             elif name != HUAYAN and name not in MODELS:

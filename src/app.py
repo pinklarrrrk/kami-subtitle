@@ -525,7 +525,7 @@ class Reader:
         return dialog
 
     def show_about(self):
-        version = "v1.0.8"
+        version = "v1.0.9"
         dialog = self.new_dialog(self.settings_parent())
         dialog.title("关于咔咪字幕机")
         dialog.transient(self.settings_parent())
@@ -1109,7 +1109,7 @@ class Reader:
                     voice_packs.remove_custom(name)
                 else:
                     if archive is None:
-                        folder = filedialog.askdirectory(parent=dialog, title="选择解压后的 sherpa-onnx VITS 语音包")
+                        folder = filedialog.askdirectory(parent=dialog, title="选择解压后的离线语音包")
                         if not folder:
                             return
                         name = voice_packs.register_custom(folder)

@@ -16,7 +16,7 @@
 
 - **Windows 系统朗读**：默认使用，离线可用。
 - **小米 MiMo**：在「设置 → MiMo 设置」保存自己的 API Key，再从音色列表选择「小米 MiMo」。使用时需要联网。
-- **自定义离线语音**：可以导入兼容 sherpa-onnx 的 VITS 语音包。下载包不附带第三方朗读模型。
+- **自定义离线语音**：支持兼容 sherpa-onnx 的 VITS 语音包和 Matcha 中英双语包。语音模型单独下载。
 
 ### 导入自定义离线语音包
 
@@ -37,7 +37,15 @@
 - `tokens.txt`
 - `lexicon.txt` 或完整的 `espeak-ng-data/` 文件夹
 
-AISHELL-3 通过这个入口使用默认发音人。只有 `.onnx` 和 `.onnx.json` 的 Piper 包，以及使用不同模型结构的 Matcha Baker，不能从这个入口导入。导入后，音色列表会显示模型文件名（不含扩展名），并自动选中刚导入的音色。可以保留多个模型；要移除某个模型，在「语音包」选中它再点「移除」，原文件会保留。
+AISHELL-3 使用默认发音人。只有 `.onnx` 和 `.onnx.json` 的 Piper 包不能直接导入。导入后会自动选中新音色；可以保留多个音色，点「移除」不会删除原文件。
+
+### ★ Matcha 中英双语
+
+1. 下载并解压 [Matcha 中英双语模型](https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/matcha-icefall-zh-en.tar.bz2)。
+2. 下载 [Vocos 16 kHz 声码器](https://github.com/k2-fsa/sherpa-onnx/releases/download/vocoder-models/vocos-16khz-univ.onnx)，放到和 `model-steps-3.onnx` 同一层。保留词典、`espeak-ng-data` 和 `.fst` 文件。
+3. 在「设置 → 语音包 → 导入文件夹」选择该目录。导入后会自动切换到「Matcha 中英双语」。
+
+此入口支持 `matcha-icefall-zh-en`，中文单语的 Matcha Baker 使用不同的声码器。
 
 ## 接入 OBS 和 VTube Studio
 
