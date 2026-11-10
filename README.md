@@ -28,6 +28,7 @@
 | [AISHELL-3](https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/vits-icefall-zh-aishell3.tar.bz2) | 普通话 | `vits-icefall-zh-aishell3` |
 | [凡尘 WNJ](https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/vits-zh-hf-fanchen-wnj.tar.bz2) | 普通话男声 | `vits-zh-hf-fanchen-wnj` |
 | [MeloTTS 中英双语](https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/vits-melo-tts-zh_en.tar.bz2) | 支持一句里中英混读 | v1.0.8 起可直接导入官方压缩包 |
+| [★ Matcha 中英双语](https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/matcha-icefall-zh-en.tar.bz2) | 支持一句里中英混读 | `matcha-icefall-zh-en`（需另下 [Vocos 16 kHz 声码器](https://github.com/k2-fsa/sherpa-onnx/releases/download/vocoder-models/vocos-16khz-univ.onnx)，见下方导入步骤） |
 | [Piper Amy](https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/vits-piper-en_US-amy-low.tar.bz2) | 美式英语 | `vits-piper-en_US-amy-low` |
 | [Piper Lessac](https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/vits-piper-en_US-lessac-medium.tar.bz2) | 美式英语 | `vits-piper-en_US-lessac-medium` |
 
@@ -39,7 +40,7 @@
 
 AISHELL-3 使用默认发音人。只有 `.onnx` 和 `.onnx.json` 的 Piper 包不能直接导入。导入后会自动选中新音色；可以保留多个音色，点「移除」不会删除原文件。
 
-### ★ Matcha 中英双语
+### 导入 Matcha 中英双语
 
 1. 下载并解压 [Matcha 中英双语模型](https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/matcha-icefall-zh-en.tar.bz2)。
 2. 下载 [Vocos 16 kHz 声码器](https://github.com/k2-fsa/sherpa-onnx/releases/download/vocoder-models/vocos-16khz-univ.onnx)，放到和 `model-steps-3.onnx` 同一层。保留词典、`espeak-ng-data` 和 `.fst` 文件。
