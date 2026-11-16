@@ -14,13 +14,13 @@ model_files = ("tokens.txt", "bpe.vocab", "encoder-epoch-99-avg-1.int8.onnx", "d
 if not all((model / name).is_file() for name in model_files):
     raise SystemExit("Missing bilingual ASR model. Set KAMI_ASR_MODEL to the extracted model directory.")
 
-datas = [(str(src / name), ".") for name in ("obs.html", "reader.html")]
+datas = [(str(src / name), ".") for name in ("obs.html", "reader.html", "bgm.html")]
 datas += [(str(src / "fonts"), "fonts"), (str(root / "assets" / "kami.ico"), "assets"),
           *((str(model / name), model_name) for name in model_files)]
 datas += collect_data_files("_sounddevice_data") + collect_data_files("tkinterdnd2")
 datas.append((str(Path(sys.base_prefix) / "LICENSE.txt"), "licenses/CPython"))
 for info in site_packages.glob("*.dist-info"):
-    if not info.name.startswith(("sounddevice-", "cffi-", "pycparser-", "audioop_lts-", "pywin32-", "sherpa_onnx-")):
+    if not info.name.startswith(("sounddevice-", "cffi-", "pycparser-", "audioop_lts-", "pywin32-", "sherpa_onnx-", "winrt_")):
         continue
     for entry in info.rglob("*"):
         if entry.is_file() and ("license" in entry.name.lower() or "licenses" in entry.parts):

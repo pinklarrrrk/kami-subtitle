@@ -4,15 +4,19 @@ import sys
 import wave
 
 
-def output_device():
+def output_devices():
     if "sounddevice" not in sys.modules:
         sys.path.insert(0, str(Path(__file__).with_name("vendor")))
     import sounddevice as sd
 
-    return next((d["index"] for d in sd.query_devices()
-                   if d["name"].startswith("CABLE Input")
-                   and d["max_output_channels"] > 0
-                   and sd.query_hostapis(d["hostapi"])["name"] == "Windows WASAPI"), None)
+    return [(d["name"], d["index"]) for d in sd.query_devices()
+            if d["max_output_channels"] > 0
+            and sd.query_hostapis(d["hostapi"])["name"] == "Windows WASAPI"]
+
+
+def output_device(name=None):
+    return next((index for label, index in output_devices()
+                 if (label == name if name else label.startswith("CABLE Input"))), None)
 
 
 def install_driver():
@@ -48,8 +52,8 @@ def install_driver():
             process.Close()
 
 
-def play(wav):
-    device = output_device()
+def play(wav, name=None):
+    device = output_device(name)
     import sounddevice as sd
 
     if device is None:

@@ -1,5 +1,7 @@
 # 第三方组件
 
+- 网易云播放日志的解码和事件解析参考了 [BrimDeck](https://github.com/MoFeng2223/BrimDeck)（Apache License 2.0），咔咪使用改写后的 Python 实现。许可见 `LICENSE-BrimDeck.txt`。
+
 - 麦克风字幕使用 [sherpa-onnx Zipformer 中英模型](https://huggingface.co/csukuangfj/sherpa-onnx-streaming-zipformer-bilingual-zh-en-2023-02-20)，模型卡标注 Apache License 2.0。
 - [python-sounddevice](https://github.com/spatialaudio/python-sounddevice) 使用 MIT License，底层音频库 [PortAudio](https://www.portaudio.com/license.html) 使用其 MIT 风格许可。
 - [思源黑体](https://github.com/adobe-fonts/source-han-sans) 由 Adobe 和 Google 等贡献，使用 SIL Open Font License 1.1，许可全文随字体分发。

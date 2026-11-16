@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="zh-CN">
+<meta charset="utf-8">
+<title>咔咪 · BGM 歌词</title>
+<style>
+@font-face{font-family:Kami;src:url('/fonts/SourceHanSansCN-Bold.otf')}
+body{margin:0;padding:14px;color:#fff;font:26px Kami,"Microsoft YaHei",sans-serif;background:transparent}
+#bgm{display:inline-grid;gap:.35em;max-width:100%;box-sizing:border-box;vertical-align:top}
+#bgm[hidden]{display:none}
+html[data-bgm-view="track"] #lyric,
+html[data-bgm-view="lyrics"] #track{display:none}
+#track,#lyric{min-width:0;padding:.45em .75em;background:transparent;overflow-wrap:anywhere}
+#track{display:grid;grid-template-columns:minmax(0,1fr);flex-direction:column;align-items:start}
+#song,#artist{display:block}
+#song{font-size:1em;color:#fff;white-space:normal}
+#track #song{display:flex;align-items:baseline;white-space:nowrap;min-width:0}
+#song::before{content:"BGM：";flex:none}
+#song-viewport{display:block;min-width:0;overflow:hidden}
+#song-text{display:inline-block;white-space:nowrap}
+#artist{margin-top:.15em;font-size:.68em;color:#a8efdf}
+#lyric{display:grid;grid-template-rows:repeat(3,1fr);row-gap:var(--lyric-gap);white-space:pre-wrap;overflow:hidden;--lyric-gap:.85em;--lyric-line-height:1.28}
+#lyric:has(.lyric-line:nth-child(3)){
+  --lyric-mask: linear-gradient(to bottom,transparent,#000 10%,#000 90%,transparent);
+  -webkit-mask-image:var(--lyric-mask);
+  mask-image:var(--lyric-mask);
+}
+#lyric:empty{display:none}
+#lyric .lyric-line{line-height:var(--lyric-line-height);color:#fff;font-size:.83em;opacity:var(--row-opacity,.45)}
+#lyric .lyric-line.is-current{opacity:1;color:#fff;font-size:var(--lyric-current-size,1.2em)}
+#lyric .lyric-line{min-height:calc(2em * var(--lyric-line-height))}
+.lyric-translation{display:block;font-size:.97em}
+</style>
+<main id="bgm" hidden><div id="track"><span id="song"><span id="song-viewport"><span id="song-text"></span></span></span><span id="artist"></span></div><div id="lyric"></div></main>
+<script>
+document.documentElement.dataset.bgmView = location.hash.slice(1);
+const panel = document.querySelector('main');
+const lyrics = document.querySelector('#lyric');
+const songText = document.querySelector('#song-text');
+const songViewport = document.querySelector('#song-viewport');
+let titleAnimation;
+function scrollTitle() {
+  titleAnimation?.cancel();
+  const distance = songText.offsetWidth - songViewport.clientWidth;
+  if (distance <= 1 || !songViewport.clientWidth) return;
+  if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  const end = `translateX(-${distance}px)`;
+  titleAnimation = songText.animate([
+    {transform:'none',offset:0}, {transform:'none',offset:.15},
+    {transform:end,offset:.85}, {transform:end,offset:1}
+  ], {duration:Math.max(4000,distance * 40),iterations:Infinity,direction:'alternate'});
+}
+const titleObserver = new ResizeObserver(scrollTitle);
+titleObserver.observe(songViewport);
+titleObserver.observe(songText);
+let previous = '';
+let previousTrack = '';
+async function refresh() {
+  try {
+    const response = await fetch('/bgm-state');
+    const state = await response.json();
+    if (songText.textContent !== (state.title || '')) {
+      songText.textContent = state.title || '';
+      scrollTitle();
+    }
+    document.querySelector('#artist').textContent = state.artist || '';
+    const lines = state.lines || [];
+    const translations = state.translations || [];
+    const times = state.times || [];
+    const signature = JSON.stringify([lines, translations, times, state.active]);
+    const track = JSON.stringify([state.title, state.artist]);
+    if (signature !== previous || track !== previousTrack) {
+      previous = signature;
+      lyrics.replaceChildren(...lines.map((line, index) => {
+        const row = document.createElement('div');
+        row.className = 'lyric-line';
+        const distance = index - state.active;
+        row.style.setProperty('--row-opacity', distance < 0
+          ? Math.max(.14, .46 - (-distance - 1) * .23)
+          : Math.max(.06, .50 - (distance - 1) * .082));
+        if (index === state.active) row.classList.add('is-current');
+        row.textContent = line;
+        if (translations[index] && translations[index] !== line) {
+          const translation = document.createElement('span');
+          translation.className = 'lyric-translation';
+          translation.textContent = translations[index];
+          row.append(translation);
+        }
+        return row;
+      }));
+
+    }
+    previousTrack = track;
+    panel.hidden = !state.title;
+  } catch (_) {
+    panel.hidden = true;
+  } finally {
+    setTimeout(refresh, 300);
+  }
+}
+refresh();
+</script>
+</html>

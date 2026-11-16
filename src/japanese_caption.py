@@ -13,7 +13,7 @@ import time
 from urllib.request import ProxyHandler, Request, build_opener
 
 from mambo import DATA
-from mic_caption import chdir
+from mic_caption import InputGate, chdir
 
 
 PACK = DATA / "japanese-captions"
@@ -89,7 +89,8 @@ def decode(recognizer, samples):
     return " ".join(stream.result.text.split())
 
 
-def recognize(stop, results):
+def recognize(stop, results, threshold_db=-65):
+    gate = InputGate(threshold_db)
     import sounddevice as sd
 
     pending = queue.Queue(maxsize=1)
@@ -130,7 +131,7 @@ def recognize(stop, results):
                 results.put((stop, "ready", "日语双语字幕已开启"))
                 while not stop.is_set():
                     pcm, _ = mic.read(rate // 10)
-                    pcm, state = audioop.ratecv(bytes(pcm), 2, 1, rate, RATE, state)
+                    pcm, state = audioop.ratecv(gate.apply(bytes(pcm)), 2, 1, rate, RATE, state)
                     remainder.frombytes(pcm)
                     while len(remainder) >= window:
                         vad.accept_waveform([sample / 32768 for sample in remainder[:window]])

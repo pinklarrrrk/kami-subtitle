@@ -58,6 +58,23 @@ AISHELL-3 使用默认发音人。只有 `.onnx` 和 `.onnx.json` 的 Piper 包�
 
 ## 接入 OBS 和 VTube Studio
 
+### 单独显示 BGM 和歌词
+
+在「设置 → BGM 歌词」分别复制歌名和歌词地址，粘贴到两个 OBS 浏览器来源，就能独立摆放；也可以复制完整地址，合在一个来源里。长歌名会横向滚动。歌词固定显示上一句、当前句、下一句，有译文时一起显示；间奏保留当前句，最后一句下方显示 `...`。咔咪读取 Windows 媒体状态；网易云没有提供进度时，会尝试只读本机播放日志。可和 BrimDeck 同时使用。
+
+咔咪会自动匹配歌词：用歌曲 ID 向网易云查询，或用歌名和歌手向 LRCLIB 查询。取不到进度或同步歌词时，只显示歌曲信息。
+
+在该来源的「自定义 CSS」中，可以用 `#bgm` 调整外框、`#track` 调整歌名和歌手的排列，或用 `#song`、`#artist`、`#lyric` 分别调整样式。例如：
+
+```css
+#bgm { position: absolute; left: 24px; bottom: 24px; }
+#track { flex-direction: column; gap: 0; }
+#lyric { font-size: 32px; }
+.lyric-line.is-current { color: #ffdc80; }
+```
+
+### 显示麦克风和朗读字幕
+
 1. 在咔咪字幕机里点「OBS 字幕地址」复制链接。
 2. 在 OBS 添加「浏览器」来源，关闭「本地文件」，粘贴链接。宽高设为画布尺寸，例如 1920 × 1080。
 
@@ -71,6 +88,7 @@ AISHELL-3 使用默认发音人。只有 `.onnx` 和 `.onnx.json` 的 Piper 包�
 
 ```powershell
 py -3.14 -m venv .venv
+& .\.venv\Scripts\python.exe -m pip install "winrt-Windows.Media.Control==4!10.0.28000.2957"
 & .\.venv\Scripts\python.exe -m pip install pyinstaller==6.22.3 pywin32==311 sherpa-onnx==1.12.40 tkinterdnd2==0.7.0 sounddevice==0.5.6 audioop-lts==0.2.2
 & .\.venv\Scripts\python.exe -m PyInstaller --noconfirm Kami.spec
 ```

@@ -119,7 +119,25 @@ def decode_chunk(recognizer, stream, rate, samples):
     return caption_text(recognizer.get_result(stream)), recognizer.is_endpoint(stream)
 
 
-def recognize(stop, results):
+class InputGate:
+    def __init__(self, threshold_db):
+        self.minimum = 32768 * 10 ** (threshold_db / 20) if threshold_db > -65 else 0
+        self.hold = 0
+
+    def apply(self, pcm):
+        import audioop
+
+        if audioop.rms(pcm, 2) >= self.minimum:
+            self.hold = 3
+        elif self.hold:
+            self.hold -= 1
+        else:
+            return bytes(len(pcm))
+        return pcm
+
+
+def recognize(stop, results, threshold_db=-65):
+    gate = InputGate(threshold_db)
     base = Path(__file__).resolve().parent
     model_path = base / MODEL_DIR
     if not model_path.is_dir():
@@ -147,7 +165,7 @@ def recognize(stop, results):
             results.put((stop, "ready", ""))
             while not stop.is_set():
                 pcm, _ = mic.read(rate // 10)
-                samples = [sample / 32768.0 for sample in array("h", bytes(pcm))]
+                samples = [sample / 32768.0 for sample in array("h", gate.apply(bytes(pcm)))]
                 line, endpoint = decode_chunk(recognizer, stream, rate, samples)
                 if endpoint and not line:
                     line = last

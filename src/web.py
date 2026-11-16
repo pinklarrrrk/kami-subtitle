@@ -7,6 +7,7 @@ import time
 import webbrowser
 
 from app import custom_font, subtitle_payload, subtitle_style
+from bgm_lyrics import song_caption
 from mambo import EngineError
 from speech import SpeechError, web_synthesize
 
@@ -33,9 +34,15 @@ class Handler(BaseHTTPRequestHandler):
         if self.headers.get("Host") != HOST:
             self.send_error(403)
             return
-        if self.path in ("/", "/obs", "/preview"):
-            page = "reader.html" if self.path == "/" else "obs.html"
+        if self.path in ("/", "/obs", "/preview", "/bgm"):
+            page = {"/": "reader.html", "/bgm": "bgm.html"}.get(self.path, "obs.html")
             self.reply(200, "text/html; charset=utf-8", Path(__file__).with_name(page).read_bytes())
+        elif self.path == "/bgm-state":
+            try:
+                state = song_caption()
+            except (OSError, RuntimeError, ImportError):
+                state = {}
+            self.reply(200, "application/json", json.dumps(state, ensure_ascii=False).encode())
         elif self.path == "/fonts/SourceHanSansCN-Bold.otf":
             font = Path(__file__).parent / "fonts" / "SourceHanSansCN-Bold.otf"
             self.reply(200, "font/otf", font.read_bytes())

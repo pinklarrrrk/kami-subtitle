@@ -265,6 +265,7 @@ class Reader:
         assets = Path(getattr(sys, "_MEIPASS", Path(__file__).resolve().parents[1])) / "assets"
         icon = str(assets / "kami.ico")
         self.window_icon = icon
+        root.iconbitmap(default=icon)
         root.iconbitmap(icon)
         root.geometry(f"380x285+{max(0, root.winfo_screenwidth() - 420)}+80")
         root.minsize(360, 255)
@@ -325,6 +326,12 @@ class Reader:
         self.speaker_button = ttk.Button(voice_row, text="切换音色…", style="Card.Soft.TButton", command=self.choose_aishell_speaker)
         self.rename_button = ttk.Button(voice_row, text="重命名", width=7, style="Card.Soft.TButton", command=self.rename_slot)
         self.vts = tk.BooleanVar(value=False)
+        self.vts_device_file = VOICE_FILE.with_name("vts-output.txt")
+        try:
+            saved_device = self.vts_device_file.read_text(encoding="utf-8").strip()
+        except (OSError, UnicodeError):
+            saved_device = ""
+        self.vts_device = tk.StringVar(value=saved_device or "自动选择")
         speed_row = ttk.Frame(voice_card, style="Card.TFrame")
         speed_row.pack(fill="x", pady=(4, 0))
         ttk.Label(speed_row, text="语速", style="Card.TLabel").pack(side="left", padx=(0, 8))
@@ -348,13 +355,47 @@ class Reader:
         ttk.Button(voice_actions, text="语音包…", style="Card.Soft.TButton", command=self.manage_packs).pack(side="left")
         ttk.Button(voice_actions, text="MiMo 设置…", style="Card.Soft.TButton", command=self.configure_mimo).pack(side="left", padx=(6, 0))
         ttk.Button(voice_actions, text="识别热词…", style="Card.Soft.TButton", command=self.edit_hotwords).pack(side="left", padx=(6, 0))
-        output_card = card("字幕与输出")
+        output_card = ttk.Frame(card("字幕与输出"), style="Card.TFrame")
+        output_card.pack(fill="x")
         ttk.Button(output_card, text="字幕样式…", style="Card.Soft.TButton", command=self.edit_subtitle_style).pack(side="left")
         ttk.Checkbutton(output_card, text="送到 VTS", variable=self.vts, style="Card.TCheckbutton").pack(side="left", padx=(12, 0))
         self.cable_install = ttk.Button(output_card, text="一键安装虚拟麦克风", style="Card.Soft.TButton",
                                         command=self.install_virtual_mic)
         self.cable_install.pack(side="left", padx=(8, 0))
+        device_row = ttk.Frame(output_card.master, style="Card.TFrame")
+        device_row.pack(fill="x", pady=(6, 0))
+        ttk.Label(device_row, text="VTS 输出设备", style="Card.TLabel").pack(side="left", padx=(0, 8))
+        device_picker = ttk.Combobox(device_row, textvariable=self.vts_device, state="readonly",
+                                     postcommand=lambda: self.refresh_vts_devices(device_picker))
+        device_picker.pack(side="left", fill="x", expand=True)
+        device_picker.bind("<<ComboboxSelected>>", self.save_vts_device)
+        bgm_card = card("BGM 歌词")
+        ttk.Button(bgm_card, text="复制完整地址", style="Card.Soft.TButton",
+                   command=self.copy_bgm_address).pack(side="left")
+        ttk.Button(bgm_card, text="复制歌名地址", style="Card.Soft.TButton",
+                   command=lambda: self.copy_bgm_address("#track")).pack(side="left", padx=(8, 0))
+        ttk.Button(bgm_card, text="复制歌词地址", style="Card.Soft.TButton",
+                   command=lambda: self.copy_bgm_address("#lyrics")).pack(side="left", padx=(8, 0))
         language_card = card("麦克风字幕")
+        mic_row = ttk.Frame(language_card, style="Card.TFrame")
+        mic_row.pack(fill="x", pady=(0, 6))
+        self.mic_threshold_file = VOICE_FILE.with_name("mic-threshold.txt")
+        try:
+            threshold = max(-65, min(-15, int(self.mic_threshold_file.read_text(encoding="utf-8"))))
+        except (OSError, ValueError):
+            threshold = -65
+        self.mic_threshold = tk.DoubleVar(value=threshold)
+        ttk.Label(mic_row, text="输入阈值", style="Card.TLabel").pack(side="left", padx=(0, 8))
+        threshold_label = ttk.Label(mic_row, width=10, anchor="e", style="Card.TLabel")
+        threshold_label.pack(side="right")
+
+        def update_threshold(value):
+            level = round(float(value))
+            threshold_label.configure(text="关闭" if level <= -65 else f"{level} dBFS")
+
+        self.mic_threshold.trace_add("write", lambda *_: update_threshold(self.mic_threshold.get()))
+        update_threshold(threshold)
+        ttk.Scale(mic_row, from_=-65, to=-15, variable=self.mic_threshold).pack(side="left", fill="x", expand=True)
         self.japanese_mic = tk.BooleanVar(value=False)
         ttk.Checkbutton(language_card, text="日语 → 日中双语", variable=self.japanese_mic,
                         style="Card.TCheckbutton", command=self.change_mic_language).pack(side="left")
@@ -436,7 +477,13 @@ class Reader:
         self.mic_button.configure(text="关麦 · 打字")
         self.status.set("正在启动麦克风字幕…")
         recognize = japanese_caption.recognize if self.japanese_mic.get() else mic_caption.recognize
-        threading.Thread(target=recognize, args=(self.mic_stop, self.mic_results), daemon=True).start()
+        threshold = round(self.mic_threshold.get())
+        try:
+            self.mic_threshold_file.parent.mkdir(parents=True, exist_ok=True)
+            self.mic_threshold_file.write_text(str(threshold), encoding="utf-8")
+        except OSError:
+            pass
+        threading.Thread(target=recognize, args=(self.mic_stop, self.mic_results, threshold), daemon=True).start()
 
     def poll_mic(self):
         while True:
@@ -469,6 +516,26 @@ class Reader:
 
     def settings_parent(self):
         return self.root if self.settings_window.state() == "withdrawn" else self.settings_window
+
+    def copy_bgm_address(self, view=""):
+        from web import ORIGIN
+        self.root.clipboard_clear()
+        self.root.clipboard_append(ORIGIN + "/bgm" + view)
+        self.status.set("已复制 BGM 浏览器地址")
+
+    def refresh_vts_devices(self, picker):
+        try:
+            names = [name for name, _ in cable_audio.output_devices()]
+        except (ImportError, OSError, RuntimeError):
+            names = []
+        picker.configure(values=("自动选择", *dict.fromkeys(names)))
+
+    def save_vts_device(self, _event):
+        try:
+            self.vts_device_file.parent.mkdir(parents=True, exist_ok=True)
+            self.vts_device_file.write_text(self.vts_device.get(), encoding="utf-8")
+        except OSError:
+            messagebox.showerror("VTS 输出设备", "无法保存输出设备。", parent=self.settings_parent())
 
     def install_virtual_mic(self):
         self.cable_install.configure(text="正在准备安装…", state="disabled")
@@ -540,7 +607,7 @@ class Reader:
         return dialog
 
     def show_about(self):
-        version = "v1.0.11"
+        version = "v1.0.12"
         dialog = self.new_dialog(self.settings_parent())
         dialog.title("关于咔咪字幕机")
         dialog.transient(self.settings_parent())
@@ -976,12 +1043,17 @@ class Reader:
             self.status.set(result)
             return
         original, (audio, duration) = result
+        fallback = False
         try:
             self.stop_audio()
             if self.vts.get():
-                self.stream = cable_audio.play(audio)
-                duration += self.stream.latency
-            else:
+                device = self.vts_device.get()
+                try:
+                    self.stream = cable_audio.play(audio, None if device == "自动选择" else device)
+                    duration += self.stream.latency
+                except (RuntimeError, OSError, ImportError):
+                    fallback = True
+            if not self.vts.get() or fallback:
                 self.wav.write_bytes(audio)
                 winsound.PlaySound(str(self.wav), winsound.SND_FILENAME | winsound.SND_ASYNC | winsound.SND_NODEFAULT)
             hold = min(6.0, max(1.8, len(line) * 0.15))
@@ -989,9 +1061,9 @@ class Reader:
             self.write_caption(line, duration + hold)
         except (RuntimeError, OSError, ImportError):
             self.stop()
-            self.status.set("播放失败，请检查 CABLE Input 或关闭「送到 VTS」")
+            self.status.set("播放失败，请检查 VTS 输出设备或关闭「送到 VTS」")
             return
-        self.status.set("正在朗读…")
+        self.status.set("VTS 输出不可用，正在通过默认设备朗读…" if fallback else "正在朗读…")
         if self.submitted is not None:
             self.recording.append((line, original))
         self.timer = self.root.after(round(duration * 1000), self.next_line)
