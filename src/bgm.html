@@ -18,7 +18,7 @@ html[data-bgm-view="lyrics"] #track{display:none}
 #song-viewport{display:block;min-width:0;overflow:hidden}
 #song-text{display:inline-block;white-space:nowrap}
 #artist{margin-top:.15em;font-size:.68em;color:#a8efdf}
-#lyric{display:grid;grid-template-rows:repeat(3,1fr);row-gap:var(--lyric-gap);white-space:pre-wrap;overflow:hidden;--lyric-gap:.85em;--lyric-line-height:1.28}
+#lyric{display:grid;grid-template-rows:repeat(3,auto);row-gap:var(--lyric-gap);white-space:pre-wrap;overflow:hidden;--lyric-gap:.38em;--lyric-line-height:1.20}
 #lyric:has(.lyric-line:nth-child(3)){
   --lyric-mask: linear-gradient(to bottom,transparent,#000 10%,#000 90%,transparent);
   -webkit-mask-image:var(--lyric-mask);
@@ -54,6 +54,7 @@ titleObserver.observe(songViewport);
 titleObserver.observe(songText);
 let previous = '';
 let previousTrack = '';
+let previousTimes = [];
 async function refresh() {
   try {
     const response = await fetch('/bgm-state');
@@ -69,6 +70,11 @@ async function refresh() {
     const signature = JSON.stringify([lines, translations, times, state.active]);
     const track = JSON.stringify([state.title, state.artist]);
     if (signature !== previous || track !== previousTrack) {
+      const roll = track === previousTrack && !panel.hidden &&
+        state.active === 1 && typeof times[1] === 'number' &&
+        times[1] === previousTimes[2] && times[0] === previousTimes[1] &&
+        !matchMedia('(prefers-reduced-motion: reduce)').matches;
+      const oldPositions = roll ? Array.from(lyrics.children, row => row.getBoundingClientRect().top) : [];
       previous = signature;
       lyrics.replaceChildren(...lines.map((line, index) => {
         const row = document.createElement('div');
@@ -87,7 +93,16 @@ async function refresh() {
         }
         return row;
       }));
-
+      if (roll && oldPositions.length === 3) {
+        const rows = Array.from(lyrics.children);
+        const offsets = rows.map((row, i) =>
+          i < 2 ? oldPositions[i + 1] - row.getBoundingClientRect().top : 12);
+        rows.forEach((row, i) => row.animate([
+          {transform: `translateY(${Math.max(0, offsets[i])}px)`, opacity: i === 2 ? 0 : undefined},
+          {transform: 'translateY(0)'}
+        ], {duration: 240, easing: 'cubic-bezier(.22,.61,.36,1)'}));
+      }
+      previousTimes = times;
     }
     previousTrack = track;
     panel.hidden = !state.title;
