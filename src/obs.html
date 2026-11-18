@@ -44,6 +44,44 @@ body.preview{background:repeating-conic-gradient(#ebedf0 0% 25%,#cbd0d7 0% 50%) 
   background:var(--caption-background,#fffaf0);
   clip-path:polygon(0 0,100% 0,50% 100%);
 }
+#caption:is([data-mode="bubble-left"],[data-mode="bubble-right"]){
+  align-self:center;
+  margin:0;
+  max-width:calc(100% - 1.4em);
+  padding:1em 1.85em;
+  border-radius:50%;
+  isolation:isolate;
+  background:none;
+  box-shadow:none;
+}
+#caption:is([data-mode="bubble-left"],[data-mode="bubble-right"])::before{
+  content:"";
+  position:absolute;
+  inset:0 -.52em 0 0;
+  z-index:-1;
+  background:var(--caption-background,#fffaf0);
+  mask:
+    radial-gradient(ellipse closest-side,#000 99%,transparent 100%) left center/calc(100% - .52em) 100% no-repeat,
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' preserveAspectRatio='none'%3E%3Cpath d='M0 0L100 50L0 100Z'/%3E%3C/svg%3E") right center/.7em 1.05em no-repeat;
+}
+#caption:is([data-mode="bubble-left"],[data-mode="bubble-right"])::after{display:none}
+#caption[data-mode="bubble-left"]::before{
+  inset:0 0 0 -.52em;
+  transform:scaleX(-1);
+}
+#caption[data-mode="bubble-right"]{
+  writing-mode:vertical-rl;
+  text-orientation:mixed;
+  width:auto;
+  padding:1.85em 1em;
+  max-height:calc(100vh - .6em);
+  line-break:strict;
+  overflow-wrap:break-word;
+}
+#caption[data-mode="bubble-right"][data-fixed-columns="true"]{
+  white-space:pre;
+  max-height:none;
+}
 #caption[data-mode="plain"]{
   width:auto;
   max-width:92%;
@@ -70,9 +108,34 @@ if (preview) document.body.classList.add('preview');
 let line = preview ? '诶，等一下，我刚刚是不是点错了？这是一句字幕预览。' : '';
 let wrap = 0;
 let currentFont;
+const pauseMark = /[，。！？、；：,.!?;…]/u;
+const closingMark = /[，。！？、；：,.!?;…）】」』》”’]/u;
+const openingMark = /[（【「『《“‘]/u;
+function verticalColumns(chars, limit) {
+  const lines = [];
+  for (let start = 0; start < chars.length;) {
+    let end = Math.min(start + limit, chars.length);
+    if (end < chars.length) {
+      const earliest = start + Math.ceil(limit * .8);
+      for (let i = end; i >= earliest; i--) {
+        if (pauseMark.test(chars[i - 1]) && !closingMark.test(chars[i])) {
+          end = i;
+          break;
+        }
+      }
+      while (end < chars.length && closingMark.test(chars[end])) end++;
+      while (end > start + 1 && openingMark.test(chars[end - 1])) end--;
+    }
+    lines.push(chars.slice(start, end).join(''));
+    start = end;
+  }
+  return lines;
+}
 function renderText() {
+  caption.dataset.fixedColumns = String(wrap > 0);
   const text = wrap ? line.split('\n').map(part => {
     const chars = Array.from(part);
+    if (caption.dataset.mode === 'bubble-right') return verticalColumns(chars, wrap).join('\n');
     const lines = [];
     for (let i = 0; i < chars.length; i += wrap) lines.push(chars.slice(i, i + wrap).join(''));
     return lines.join('\n');

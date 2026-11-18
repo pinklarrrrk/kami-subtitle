@@ -49,22 +49,32 @@ def subtitle_font():
         return "source-han-sans"
 
 
+SUBTITLE_MODES = {
+    "气泡模式": "bubble",
+    "左尖尾 · 横排": "bubble-left",
+    "右尖尾 · 竖排": "bubble-right",
+    "字幕模式": "plain",
+}
+
+
 def subtitle_style():
     font = next(name for name, value in FONTS.items() if value == subtitle_font())
     defaults = {
         "mode": "气泡模式",
-        "气泡模式": dict(font=font, size=0, color="#181818", background="#fffaf0", opacity=100, wrap=0),
+        **{mode: dict(font=font, size=0, color="#181818", background="#fffaf0", opacity=100, wrap=0)
+           for mode in SUBTITLE_MODES if mode != "字幕模式"},
         "字幕模式": dict(font=font, size=0, color="#ffffff", background="#000000", opacity=0,
                          outline=2, outline_color="#000000", wrap=0),
     }
     try:
         saved = json.loads(STYLE_FILE.read_text(encoding="utf-8"))
-        if saved["mode"] in ("气泡模式", "字幕模式"):
-            for mode in ("气泡模式", "字幕模式"):
+        if saved["mode"] in SUBTITLE_MODES:
+            for mode in SUBTITLE_MODES:
+                options = saved.get(mode, {})
                 background = defaults[mode]["background"]
                 for key in defaults[mode]:
-                    fallback = 100 if key == "opacity" and saved[mode].get("background") else defaults[mode][key]
-                    defaults[mode][key] = saved[mode].get(key, fallback)
+                    fallback = 100 if key == "opacity" and options.get("background") else defaults[mode][key]
+                    defaults[mode][key] = options.get(key, fallback)
                 if not defaults[mode]["background"]:
                     defaults[mode].update(background=background, opacity=0)
             defaults["mode"] = saved["mode"]
@@ -89,7 +99,7 @@ def subtitle_payload(styles):
     active["font"] = "custom" if path else FONTS.get(font, "source-han-sans")
     if path:
         active["font_url"] = "/custom-font/" + quote(path.name, safe="")
-    active["mode"] = "bubble" if mode == "气泡模式" else "plain"
+    active["mode"] = SUBTITLE_MODES[mode]
     if active["background"]:
         active["background"] += f'{round(active["opacity"] * 255 / 100):02x}'
     return active
@@ -616,7 +626,7 @@ class Reader:
         return dialog
 
     def show_about(self):
-        version = "v1.0.13"
+        version = "v1.0.14"
         dialog = self.new_dialog(self.settings_parent())
         dialog.title("关于咔咪字幕机")
         dialog.transient(self.settings_parent())
@@ -651,13 +661,13 @@ class Reader:
         panel = ttk.Frame(dialog, padding=12)
         panel.pack(fill="both", expand=True)
         mode = tk.StringVar(dialog, styles["mode"])
-        picker = ttk.Combobox(panel, textvariable=mode, values=("气泡模式", "字幕模式"), state="readonly")
+        picker = ttk.Combobox(panel, textvariable=mode, values=tuple(SUBTITLE_MODES), state="readonly")
         picker.pack(fill="x")
         fields = ttk.Frame(panel)
         fields.pack(fill="x", pady=8)
         values = {
             name: {key: tk.StringVar(dialog, value) for key, value in styles[name].items()}
-            for name in ("气泡模式", "字幕模式")
+            for name in SUBTITLE_MODES
         }
         limits = {"size": (0, 160), "outline": (0, 12), "opacity": (0, 100), "wrap": (0, 60)}
 
