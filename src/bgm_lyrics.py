@@ -193,6 +193,8 @@ def cached_online(title, artist, song_id):
         if _pending and not _pending.done():
             return None
         key = (title, artist, song_id, int(monotonic() // 300))
+        if _pending_key and _pending_key[:3] == key[:3] and _pending.result() is not None:
+            return _pending.result()
         if _pending_key != key:
             _pending_key = key
             _pending = _lookup.submit(online_lyrics, *key)
@@ -230,9 +232,8 @@ async def current_song():
     return "", "", 0, ""
 
 
-def song_caption():
-    title, artist, seconds, song_id = asyncio.run(current_song())
-    lyrics = None
+@lru_cache(maxsize=32)
+def local_lyrics(title, artist, period):
     for label in (f"{artist} - {title}", title) if title else ():
         filename = re.sub(r'[<>:"/\\|?*\x00-\x1f]', "_", label).strip(" .") + ".lrc"
         try:
@@ -243,8 +244,15 @@ def song_caption():
             text = data.decode("utf-8-sig")
         except UnicodeError:
             text = data.decode("gb18030", errors="replace")
-        lyrics = Lyrics(text)
-        break
+        return Lyrics(text)
+    return None
+
+
+def song_caption(include_lyrics=True):
+    title, artist, seconds, song_id = asyncio.run(current_song())
+    if not include_lyrics:
+        return {"title": title, "artist": artist}
+    lyrics = local_lyrics(title, artist, int(monotonic() // 5)) if title and seconds is not None else None
     if lyrics is None and title and seconds is not None:
         lyrics = cached_online(title, artist, song_id)
     lines, active, translations, times = lyrics.window(seconds) if lyrics else ([], -1, [], [])

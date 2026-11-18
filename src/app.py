@@ -376,6 +376,11 @@ class Reader:
                    command=lambda: self.copy_bgm_address("#track")).pack(side="left", padx=(8, 0))
         ttk.Button(bgm_card, text="复制歌词地址", style="Card.Soft.TButton",
                    command=lambda: self.copy_bgm_address("#lyrics")).pack(side="left", padx=(8, 0))
+        from web import bgm_enabled
+        track_enabled, lyrics_enabled = (tk.BooleanVar(value=value) for value in bgm_enabled)
+        for label, flag in (("显示歌名", track_enabled), ("显示歌词", lyrics_enabled)):
+            ttk.Checkbutton(bgm_card, text=label, variable=flag,
+                            command=lambda: self.set_bgm_enabled(track_enabled.get(), lyrics_enabled.get())).pack(side="left", padx=(8, 0))
         language_card = card("麦克风字幕")
         mic_row = ttk.Frame(language_card, style="Card.TFrame")
         mic_row.pack(fill="x", pady=(0, 6))
@@ -523,6 +528,10 @@ class Reader:
         self.root.clipboard_append(ORIGIN + "/bgm" + view)
         self.status.set("已复制 BGM 浏览器地址")
 
+    def set_bgm_enabled(self, track, lyrics):
+        import web
+        web.bgm_enabled = (track, lyrics)
+
     def refresh_vts_devices(self, picker):
         try:
             names = [name for name, _ in cable_audio.output_devices()]
@@ -607,7 +616,7 @@ class Reader:
         return dialog
 
     def show_about(self):
-        version = "v1.0.12"
+        version = "v1.0.13"
         dialog = self.new_dialog(self.settings_parent())
         dialog.title("关于咔咪字幕机")
         dialog.transient(self.settings_parent())

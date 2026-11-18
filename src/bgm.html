@@ -9,6 +9,7 @@ body{margin:0;padding:14px;color:#fff;font:26px Kami,"Microsoft YaHei",sans-seri
 #bgm[hidden]{display:none}
 html[data-bgm-view="track"] #lyric,
 html[data-bgm-view="lyrics"] #track{display:none}
+#track[hidden],#lyric[hidden]{display:none}
 #track,#lyric{min-width:0;padding:.45em .75em;background:transparent;overflow-wrap:anywhere}
 #track{display:grid;grid-template-columns:minmax(0,1fr);flex-direction:column;align-items:start}
 #song,#artist{display:block}
@@ -33,6 +34,9 @@ html[data-bgm-view="lyrics"] #track{display:none}
 <main id="bgm" hidden><div id="track"><span id="song"><span id="song-viewport"><span id="song-text"></span></span></span><span id="artist"></span></div><div id="lyric"></div></main>
 <script>
 document.documentElement.dataset.bgmView = location.hash.slice(1);
+const trackOnly = document.documentElement.dataset.bgmView === 'track';
+const artist = document.querySelector('#artist');
+const trackPanel = document.querySelector('#track');
 const panel = document.querySelector('main');
 const lyrics = document.querySelector('#lyric');
 const songText = document.querySelector('#song-text');
@@ -59,11 +63,15 @@ async function refresh() {
   try {
     const response = await fetch('/bgm-state');
     const state = await response.json();
+    trackPanel.hidden = state.showTrack === false;
+    lyrics.hidden = state.showLyrics === false;
     if (songText.textContent !== (state.title || '')) {
       songText.textContent = state.title || '';
       scrollTitle();
     }
-    document.querySelector('#artist').textContent = state.artist || '';
+    if (artist.textContent !== (state.artist || '')) artist.textContent = state.artist || '';
+    panel.hidden = !state.title;
+    if (trackOnly) return;
     const lines = state.lines || [];
     const translations = state.translations || [];
     const times = state.times || [];
@@ -109,7 +117,7 @@ async function refresh() {
   } catch (_) {
     panel.hidden = true;
   } finally {
-    setTimeout(refresh, 300);
+    setTimeout(refresh, trackOnly || lyrics.hidden || panel.hidden ? 1200 : 300);
   }
 }
 refresh();

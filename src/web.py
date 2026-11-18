@@ -2,6 +2,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import json
 import sys
 from pathlib import Path
+from threading import Lock
 from urllib.parse import unquote
 import time
 import webbrowser
@@ -15,6 +16,28 @@ HOST = "127.0.0.1:8765"
 ORIGIN = "http://" + HOST
 caption = ("", 0)
 preview_style = None
+_bgm_lock = Lock()
+_bgm_until = 0
+_bgm_body = b"{}"
+_bgm_cached_flags = None
+bgm_enabled = (True, True)
+
+
+def bgm_state():
+    global _bgm_until, _bgm_body, _bgm_cached_flags
+    with _bgm_lock:
+        track, lyrics = bgm_enabled
+        if not track and not lyrics:
+            return b'{"showTrack":false,"showLyrics":false}'
+        if (track, lyrics) != _bgm_cached_flags or time.monotonic() >= _bgm_until:
+            try:
+                state = song_caption(include_lyrics=lyrics)
+            except (OSError, RuntimeError, ImportError):
+                state = {}
+            _bgm_body = json.dumps(dict(state, showTrack=track, showLyrics=lyrics), ensure_ascii=False).encode()
+            _bgm_until = time.monotonic() + 0.25
+            _bgm_cached_flags = (track, lyrics)
+        return _bgm_body
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -38,11 +61,7 @@ class Handler(BaseHTTPRequestHandler):
             page = {"/": "reader.html", "/bgm": "bgm.html"}.get(self.path, "obs.html")
             self.reply(200, "text/html; charset=utf-8", Path(__file__).with_name(page).read_bytes())
         elif self.path == "/bgm-state":
-            try:
-                state = song_caption()
-            except (OSError, RuntimeError, ImportError):
-                state = {}
-            self.reply(200, "application/json", json.dumps(state, ensure_ascii=False).encode())
+            self.reply(200, "application/json", bgm_state())
         elif self.path == "/fonts/SourceHanSansCN-Bold.otf":
             font = Path(__file__).parent / "fonts" / "SourceHanSansCN-Bold.otf"
             self.reply(200, "font/otf", font.read_bytes())
